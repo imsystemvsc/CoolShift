@@ -1,0 +1,641 @@
+<Window x:Class="ParkToggleWpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:monitoring="clr-namespace:ParkToggleWpf.Monitoring"
+        mc:Ignorable="d"
+        Title="Park Toggle"
+        Height="660"
+        Width="560"
+        MinHeight="580"
+        MinWidth="520"
+        WindowStartupLocation="CenterScreen"
+        Background="#121217">
+    <Window.Resources>
+        <SolidColorBrush x:Key="WindowGradientTop" Color="#1A1B23" />
+        <SolidColorBrush x:Key="WindowGradientBottom" Color="#101015" />
+        <LinearGradientBrush x:Key="WindowBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#1A1B23" Offset="0" />
+            <GradientStop Color="#101015" Offset="1" />
+        </LinearGradientBrush>
+        <SolidColorBrush x:Key="CardBackgroundBrush" Color="#1E1F27" />
+        <SolidColorBrush x:Key="CardBorderBrush" Color="#2C2E37" />
+        <SolidColorBrush x:Key="ForegroundBrush" Color="#EEF0F4" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#9AA0AE" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#8CA9FF" />
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#7C91FF" />
+        <SolidColorBrush x:Key="AccentPressedBrush" Color="#5E6FE0" />
+                <Style x:Key="OverlayScrollBarRepeatButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="Transparent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SlimScrollBarStyle" TargetType="ScrollBar">
+            <Setter Property="Width" Value="10" />
+            <Setter Property="Background" Value="#151822" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid x:Name="Root" Background="{TemplateBinding Background}">
+                            <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="True" Focusable="False">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton x:Name="DecreaseButton" Command="{x:Static ScrollBar.LineUpCommand}" Style="{StaticResource OverlayScrollBarRepeatButtonStyle}" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton x:Name="IncreaseButton" Command="{x:Static ScrollBar.LineDownCommand}" Style="{StaticResource OverlayScrollBarRepeatButtonStyle}" />
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="#8CA9FF" Opacity="0.75" CornerRadius="4" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter TargetName="Root" Property="Height" Value="{Binding Width, RelativeSource={RelativeSource TemplatedParent}}" />
+                                <Setter TargetName="Root" Property="Width" Value="Auto" />
+                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
+                                <Setter TargetName="DecreaseButton" Property="Command" Value="{x:Static ScrollBar.LineLeftCommand}" />
+                                <Setter TargetName="IncreaseButton" Property="Command" Value="{x:Static ScrollBar.LineRightCommand}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+<SolidColorBrush x:Key="SecondaryBorderBrush" Color="#414451" />
+        <SolidColorBrush x:Key="AlwaysOnBrush" Color="#FFD248" />
+        <SolidColorBrush x:Key="AlwaysOnHoverBrush" Color="#F0BA32" />
+        <SolidColorBrush x:Key="AlwaysOnPressedBrush" Color="#C99612" />
+        <SolidColorBrush x:Key="AlwaysOnTextBrush" Color="#3C2E00" />
+
+        <DropShadowEffect x:Key="CardShadow" BlurRadius="28" Opacity="0.45" ShadowDepth="0" Color="#88000000" />
+        <ControlTemplate x:Key="RoundedComboToggleButton" TargetType="ToggleButton">
+            <Border x:Name="ToggleBorder"
+                    Background="Transparent"
+                    BorderBrush="Transparent"
+                    BorderThickness="0"
+                    CornerRadius="14">
+                <Path Data="M 0 0 L 5 5 L 10 0"
+                      Stroke="#9AA0AE"
+                      StrokeThickness="2"
+                      HorizontalAlignment="Right"
+                      Margin="0,0,18,0"
+                      VerticalAlignment="Center"
+                      StrokeEndLineCap="Round"
+                      StrokeStartLineCap="Round"
+                      StrokeLineJoin="Round" />
+            </Border>
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="ToggleBorder" Property="Opacity" Value="0.6" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <Style x:Key="RoundedComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+            <Setter Property="Background" Value="#1F212B" />
+            <Setter Property="BorderBrush" Value="#2B2E37" />
+            <Setter Property="Padding" Value="12 8" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="BackgroundBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="14" />
+                            <ContentPresenter Margin="14,4,36,4"
+                                              HorizontalAlignment="Left"
+                                              VerticalAlignment="Center"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                              IsHitTestVisible="False" />
+                            <ToggleButton x:Name="ToggleButton"
+                                          Template="{StaticResource RoundedComboToggleButton}"
+                                          Background="Transparent"
+                                          BorderBrush="Transparent"
+                                          Focusable="False"
+                                          IsTabStop="False"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Stretch"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" />
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   PopupAnimation="Slide">
+                                <Grid MaxHeight="220" MinWidth="{TemplateBinding ActualWidth}">
+                                    <Border Background="#1B1D26"
+                                            BorderBrush="#2B2E37"
+                                            BorderThickness="1"
+                                            CornerRadius="14">
+                                        <ScrollViewer Margin="2" SnapsToDevicePixels="True">
+                                            <StackPanel>
+                                                <ItemsPresenter />
+                                            </StackPanel>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Grid>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="HasItems" Value="False">
+                                <Setter TargetName="BackgroundBorder" Property="MinHeight" Value="36" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BackgroundBorder" Property="BorderBrush" Value="#3B3F4C" />
+                                <Setter TargetName="BackgroundBorder" Property="Background" Value="#242734" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="BackgroundBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="BackgroundBorder" Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+                <Style x:Key="ChipButtonBaseStyle" TargetType="Button">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="20 8" />
+            <Setter Property="BorderBrush" Value="{StaticResource SecondaryBorderBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="16"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.6" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+                
+
+        <Style x:Key="WarningButtonStyle" TargetType="Button" BasedOn="{StaticResource ChipButtonBaseStyle}">
+            <Setter Property="Foreground" Value="#16110F" />
+            <Setter Property="Background" Value="#F7B267" />
+            <Setter Property="BorderBrush" Value="#F7B267" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#F5A24C" />
+                    <Setter Property="BorderBrush" Value="#F5A24C" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#DC8C39" />
+                    <Setter Property="BorderBrush" Value="#DC8C39" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#9F7249" />
+                    <Setter Property="BorderBrush" Value="#9F7249" />
+                    <Setter Property="Foreground" Value="#3D3124" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ListRowItemStyle" TargetType="ListViewItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0 2" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListViewItem">
+                        <Border x:Name="RowBorder"
+                                Background="Transparent"
+                                CornerRadius="8"
+                                BorderThickness="0"
+                                Padding="0">
+                            <ContentPresenter Margin="12 6"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="RowBorder" Property="Background" Value="#232631" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="RowBorder" Property="Background" Value="#2A2D3A" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="RowBorder" Property="Opacity" Value="0.6" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+<Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource ChipButtonBaseStyle}">
+            <Setter Property="Foreground" Value="#101015" />
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentPressedBrush}" />
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentPressedBrush}" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#7F8ACF" />
+                    <Setter Property="BorderBrush" Value="#7F8ACF" />
+                    <Setter Property="Foreground" Value="#2B2D35" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource ChipButtonBaseStyle}">
+            <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+            <Setter Property="Background" Value="#1F212B" />
+            <Setter Property="BorderBrush" Value="{StaticResource SecondaryBorderBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#2A2D38" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#1C1E26" />
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#1A1B22" />
+                    <Setter Property="BorderBrush" Value="#2E3038" />
+                    <Setter Property="Foreground" Value="#6C707E" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+
+
+        <Style TargetType="TabControl">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        </Style>
+
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Padding" Value="16 8" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Border"
+                                Background="Transparent"
+                                CornerRadius="16"
+                                Padding="{TemplateBinding Padding}"
+                                Margin="0,0,8,0">
+                            <ContentPresenter x:Name="ContentSite"
+                                              ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#2A2D38" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#22242E" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Border" Property="Opacity" Value="0.6" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Background="{StaticResource WindowBackgroundBrush}">
+        <Border Padding="36"
+                CornerRadius="32"
+                Width="520"
+                Background="{StaticResource CardBackgroundBrush}"
+                Effect="{StaticResource CardShadow}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="Park Toggle"
+                           FontSize="32"
+                           FontWeight="SemiBold"
+                           Foreground="{StaticResource ForegroundBrush}"
+                           Margin="0 0 0 24" />
+
+                <TabControl Grid.Row="1">
+                                                                    <TabItem Header="Overview">
+                                                                        <Border Background="#1B1D26"
+                                                                                CornerRadius="20"
+                                                                                Padding="24"
+                                                                                Margin="0 0 0 16"
+                                                                                BorderBrush="#2C2E37"
+                                                                                BorderThickness="1"
+                                                                                MinHeight="380"
+                                                                                MaxHeight="380">
+                                                                            <StackPanel>
+                                                                                <TextBlock Text="Active Plan"
+                                                                                           Foreground="{StaticResource MutedBrush}"
+                                                                                           FontSize="14"
+                                                                                           Margin="0 0 0 6" />
+                                                                                <ComboBox x:Name="PlanCombo"
+                                                                                          Style="{StaticResource RoundedComboBoxStyle}"
+                                                                                          DisplayMemberPath="Name"
+                                                                                          SelectionChanged="PlanCombo_SelectionChanged" />
+                
+                                                                                <StackPanel Orientation="Horizontal" Margin="0 24 0 0" VerticalAlignment="Center" >
+                                                                                <TextBlock Text="Current Mode:" Foreground="{StaticResource ForegroundBrush}" FontSize="18" FontWeight="SemiBold" />
+                                                                                <TextBlock x:Name="ModeValueText" Text="--" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="8,0,0,0" />
+                                                                            </StackPanel>
+                
+                                                                                <StackPanel Margin="0 16 0 0">
+                                                                                    <TextBlock x:Name="CoreLabel"
+                                                                                               Foreground="{StaticResource MutedBrush}"
+                                                                                               FontSize="14" />
+                                                                                    <TextBlock x:Name="IdleLabel"
+                                                                                               Foreground="{StaticResource MutedBrush}"
+                                                                                               FontSize="14"
+                                                                                               Margin="0 4 0 0" />
+                                                                                </StackPanel>
+                
+                                                                                <Separator Margin="0 24 0 16"
+                                                                                           Background="#2C2E37"
+                                                                                           Height="1" />
+                
+                                                                                <StackPanel>
+                                                                                    <TextBlock Text="CPU Package Temperature"
+                                                                                               Foreground="{StaticResource MutedBrush}"
+                                                                                               FontSize="14" />
+                                                                                    <TextBlock x:Name="PackageTempText"
+                                                                                               Text="--"
+                                                                                               Margin="0 6 0 0"
+                                                                                               FontSize="26"
+                                                                                               FontWeight="SemiBold"
+                                                                                               Foreground="{StaticResource ForegroundBrush}" />
+                                                                                </StackPanel>
+                
+                                                                                <Grid Margin="0 32 0 0">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                        <ColumnDefinition Width="150" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <Button x:Name="ToggleButton"
+                                                                                            Content="Switch Mode"
+                                                                                            Style="{StaticResource PrimaryButtonStyle}"
+                                                                                            Grid.Column="0"
+                                                                                            Margin="0 0 16 0"
+                                                                                            HorizontalAlignment="Stretch"
+                                                                                            Click="ToggleButton_Click" />
+                                                                                    <Button x:Name="RefreshButton"
+                                                                                            Content="Refresh"
+                                                                                            Style="{StaticResource SecondaryButtonStyle}"
+                                                                                            Grid.Column="1"
+                                                                                            Click="RefreshButton_Click" />
+                                                                                </Grid>
+                                                                            </StackPanel>
+                                                                        </Border>
+                                                                    </TabItem>
+                
+                                                                    
+                                        <TabItem Header="Monitoring">
+                        <Border Background="#1B1D26"
+                                CornerRadius="20"
+                                Padding="24"
+                                Margin="0 0 0 16"
+                                BorderBrush="#2C2E37"
+                                BorderThickness="1"
+                                MinHeight="380"
+                                MaxHeight="380">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Grid Grid.Row="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Active Sensors"
+                                               Foreground="{StaticResource ForegroundBrush}"
+                                               FontSize="18"
+                                               FontWeight="SemiBold" />
+                                    <Button Grid.Column="1"
+                                            Content="Settings"
+                                            Margin="12 0 0 0"
+                                            Padding="18 6"
+                                            Style="{StaticResource SecondaryButtonStyle}"
+                                            Click="OpenMonitoringSettings_Click" />
+                                </Grid>
+
+                                <Grid Grid.Row="1" Margin="0 16 0 0">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+
+                                    <Grid Grid.Row="0">
+                                        <Border Background="#1B1D26"
+                                                BorderBrush="#2C2E37"
+                                                BorderThickness="1"
+                                                CornerRadius="12">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="*" />
+                                                </Grid.RowDefinitions>
+
+                                                <Grid Margin="0 0 0 6">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="Sensor"
+                                                               Foreground="{StaticResource MutedBrush}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="Current"
+                                                               Margin="24 0 0 0"
+                                                               Foreground="{StaticResource MutedBrush}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               HorizontalAlignment="Right" />
+                                                    <TextBlock Grid.Column="2"
+                                                               Text="Min"
+                                                               Margin="24 0 0 0"
+                                                               Foreground="{StaticResource MutedBrush}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               HorizontalAlignment="Right" />
+                                                    <TextBlock Grid.Column="3"
+                                                               Text="Max"
+                                                               Margin="24 0 0 0"
+                                                               Foreground="{StaticResource MutedBrush}"
+                                                               FontSize="12"
+                                                               FontWeight="SemiBold"
+                                                               HorizontalAlignment="Right" />
+                                                </Grid>
+
+                                                <ListView Grid.Row="1"
+                                                          x:Name="ActiveSensorsList"
+                                                          ItemsSource="{Binding MonitoringSensorsView}"
+                                                          Background="Transparent"
+                                                          BorderThickness="0"
+                                                          Foreground="{StaticResource ForegroundBrush}"
+                                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                          HorizontalContentAlignment="Stretch"
+                                                          Margin="0"
+                                                          AllowDrop="True"
+                                                          PreviewMouseWheel="ActiveSensorsList_PreviewMouseWheel"
+                                                          PreviewMouseLeftButtonDown="ActiveSensorsList_PreviewMouseLeftButtonDown"
+                                                          MouseMove="ActiveSensorsList_MouseMove"
+                                                          DragOver="ActiveSensorsList_DragOver"
+                                                          Drop="ActiveSensorsList_Drop"
+                                                          ItemContainerStyle="{StaticResource ListRowItemStyle}">
+                                                    <ListView.Resources>
+                                                        <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBarStyle}" />
+                                                    </ListView.Resources>
+                                                    <ListView.GroupStyle>
+                                                        <GroupStyle>
+                                                            <GroupStyle.HeaderTemplate>
+                                                                <DataTemplate>
+                                                                    <Border Background="#161821"
+                                                                            Padding="8 4"
+                                                                            CornerRadius="8"
+                                                                            Margin="0 12 0 4">
+                                                                        <TextBlock Text="{Binding Name}"
+                                                                                   Foreground="{StaticResource MutedBrush}"
+                                                                                   FontSize="13"
+                                                                                   FontWeight="SemiBold" />
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </GroupStyle.HeaderTemplate>
+                                                            <GroupStyle.Panel>
+                                                                <ItemsPanelTemplate>
+                                                                    <StackPanel />
+                                                                </ItemsPanelTemplate>
+                                                            </GroupStyle.Panel>
+                                                        </GroupStyle>
+                                                    </ListView.GroupStyle>
+                                                    <ListView.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Text="{Binding SensorDisplayName}"
+                                                                           Foreground="{StaticResource MutedBrush}"
+                                                                           FontSize="14"
+                                                                           FontWeight="SemiBold"
+                                                                           TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{Binding CurrentDisplay}"
+                                                                           Margin="24 0 0 0"
+                                                                           FontSize="15"
+                                                                           FontWeight="SemiBold"
+                                                                           HorizontalAlignment="Right" />
+                                                                <TextBlock Grid.Column="2"
+                                                                           Text="{Binding MinDisplay}"
+                                                                           Margin="24 0 0 0"
+                                                                           HorizontalAlignment="Right"
+                                                                           FontSize="13" />
+                                                                <TextBlock Grid.Column="3"
+                                                                           Text="{Binding MaxDisplay}"
+                                                                           Margin="24 0 0 0"
+                                                                           HorizontalAlignment="Right"
+                                                                           FontSize="13" />
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ListView.ItemTemplate>
+                                                </ListView>
+                                            </Grid>
+                                        </Border>
+
+
+                                        <TextBlock Text="No sensors selected. Open Settings to choose sensors."
+                                                   Foreground="{StaticResource MutedBrush}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="14">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding MonitoringSensorsView.IsEmpty}" Value="0">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </TabItem>
+
+                
+                                                        </TabControl>
+
+            </Grid>
+
+        </Border>
+
+    </Grid>
+
+</Window>
+
+
+
+
+
+
