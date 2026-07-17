@@ -4,15 +4,19 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:monitoring="clr-namespace:ParkToggleWpf.Monitoring"
+        xmlns:converters="clr-namespace:ParkToggleWpf.Converters"
+        xmlns:tb="http://www.hardcodet.net/taskbar"
+        xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
         mc:Ignorable="d"
         Title="Park Toggle"
-        Height="660"
-        Width="560"
-        MinHeight="580"
-        MinWidth="520"
+        Height="680"
+        Width="940"
+        MinHeight="600"
+        MinWidth="800"
         WindowStartupLocation="CenterScreen"
         Background="#121217">
     <Window.Resources>
+        <converters:CoreNameToNumberConverter x:Key="CoreNameToNumberConverter" />
         <SolidColorBrush x:Key="WindowGradientTop" Color="#1A1B23" />
         <SolidColorBrush x:Key="WindowGradientBottom" Color="#101015" />
         <LinearGradientBrush x:Key="WindowBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
@@ -344,14 +348,38 @@
         </Style>
     </Window.Resources>
 
+        <Window.TaskbarItemInfo>
+        <TaskbarItemInfo ProgressState="{Binding ViewModel.TaskbarProgressState}" 
+                         ProgressValue="{Binding ViewModel.TaskbarProgressValue}" />
+    </Window.TaskbarItemInfo>
     <Grid Background="{StaticResource WindowBackgroundBrush}">
+
+        <tb:TaskbarIcon x:Name="TrayIcon"
+                        ToolTipText="Park Toggle"
+                        IconSource="{Binding ViewModel.TrayIconSource}"
+                        MenuActivation="RightClick"
+                        TrayMouseDoubleClick="TaskbarIcon_TrayMouseDoubleClick">
+            <tb:TaskbarIcon.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="{Binding ViewModel.ModeValueText, StringFormat=Current Mode: \{0\}}" IsEnabled="False" />
+                    <Separator />
+                    <MenuItem Header="Switch Mode" Command="{Binding ViewModel.ToggleModeCommand}" />
+                    <Separator />
+                    <MenuItem Header="Show Window" Click="ShowWindow_Click" />
+                    <MenuItem Header="Open Log" Command="{Binding ViewModel.OpenLogCommand}" />
+                    <Separator />
+                    <MenuItem Header="Exit" Click="Exit_Click" />
+                </ContextMenu>
+            </tb:TaskbarIcon.ContextMenu>
+        </tb:TaskbarIcon>
+
         <Border Padding="36"
                 CornerRadius="32"
-                Width="520"
+                Margin="32,20"
                 Background="{StaticResource CardBackgroundBrush}"
                 Effect="{StaticResource CardShadow}"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center">
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -367,87 +395,181 @@
 
                 <TabControl Grid.Row="1">
                                                                     <TabItem Header="Overview">
-                                                                        <Border Background="#1B1D26"
-                                                                                CornerRadius="20"
-                                                                                Padding="24"
-                                                                                Margin="0 0 0 16"
-                                                                                BorderBrush="#2C2E37"
-                                                                                BorderThickness="1"
-                                                                                MinHeight="380"
-                                                                                MaxHeight="380">
-                                                                            <StackPanel>
-                                                                                <TextBlock Text="Active Plan"
-                                                                                           Foreground="{StaticResource MutedBrush}"
-                                                                                           FontSize="14"
-                                                                                           Margin="0 0 0 6" />
-                                                                                <ComboBox x:Name="PlanCombo"
-                                                                                          Style="{StaticResource RoundedComboBoxStyle}"
-                                                                                          DisplayMemberPath="Name"
-                                                                                          SelectionChanged="PlanCombo_SelectionChanged" />
-                
-                                                                                <StackPanel Orientation="Horizontal" Margin="0 24 0 0" VerticalAlignment="Center" >
-                                                                                <TextBlock Text="Current Mode:" Foreground="{StaticResource ForegroundBrush}" FontSize="18" FontWeight="SemiBold" />
-                                                                                <TextBlock x:Name="ModeValueText" Text="--" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="8,0,0,0" />
-                                                                            </StackPanel>
-                
-                                                                                <StackPanel Margin="0 16 0 0">
-                                                                                    <TextBlock x:Name="CoreLabel"
-                                                                                               Foreground="{StaticResource MutedBrush}"
-                                                                                               FontSize="14" />
-                                                                                    <TextBlock x:Name="IdleLabel"
-                                                                                               Foreground="{StaticResource MutedBrush}"
-                                                                                               FontSize="14"
-                                                                                               Margin="0 4 0 0" />
-                                                                                </StackPanel>
-                
-                                                                                <Separator Margin="0 24 0 16"
-                                                                                           Background="#2C2E37"
-                                                                                           Height="1" />
-                
-                                                                                <StackPanel>
-                                                                                    <TextBlock Text="CPU Package Temperature"
-                                                                                               Foreground="{StaticResource MutedBrush}"
-                                                                                               FontSize="14" />
-                                                                                    <TextBlock x:Name="PackageTempText"
-                                                                                               Text="--"
-                                                                                               Margin="0 6 0 0"
-                                                                                               FontSize="26"
-                                                                                               FontWeight="SemiBold"
-                                                                                               Foreground="{StaticResource ForegroundBrush}" />
-                                                                                </StackPanel>
-                
-                                                                                <Grid Margin="0 32 0 0">
-                                                                                    <Grid.ColumnDefinitions>
-                                                                                        <ColumnDefinition Width="*" />
-                                                                                        <ColumnDefinition Width="150" />
-                                                                                    </Grid.ColumnDefinitions>
-                                                                                    <Button x:Name="ToggleButton"
-                                                                                            Content="Switch Mode"
-                                                                                            Style="{StaticResource PrimaryButtonStyle}"
-                                                                                            Grid.Column="0"
-                                                                                            Margin="0 0 16 0"
-                                                                                            HorizontalAlignment="Stretch"
-                                                                                            Click="ToggleButton_Click" />
-                                                                                    <Button x:Name="RefreshButton"
-                                                                                            Content="Refresh"
-                                                                                            Style="{StaticResource SecondaryButtonStyle}"
-                                                                                            Grid.Column="1"
-                                                                                            Click="RefreshButton_Click" />
-                                                                                </Grid>
-                                                                            </StackPanel>
-                                                                        </Border>
-                                                                    </TabItem>
-                
-                                                                    
-                                        <TabItem Header="Monitoring">
+        <Grid Margin="0,16,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            
+            <!-- LEFT COLUMN -->
+            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                <!-- Card 1: Power Profile -->
+                <Border Background="#1B1D26" CornerRadius="16" Padding="20" Margin="0,0,0,16" BorderBrush="#2C2E37" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Active Power Plan" Foreground="{StaticResource MutedBrush}" FontSize="14" Margin="0,0,0,8" />
+                        <ComboBox x:Name="PlanCombo" 
+                                  ItemsSource="{Binding ViewModel.Plans}" 
+                                  SelectedItem="{Binding ViewModel.SelectedPlan}" 
+                                  DisplayMemberPath="Name">
+                            <ComboBox.Style>
+                                <Style TargetType="ComboBox" BasedOn="{StaticResource RoundedComboBoxStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ViewModel.IsBusy}" Value="True">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ComboBox.Style>
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
+
+                <!-- Card 2: Quick Actions -->
+                <Border Background="#1B1D26" CornerRadius="16" Padding="20" BorderBrush="#2C2E37" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Quick Actions" Foreground="{StaticResource MutedBrush}" FontSize="14" Margin="0,0,0,12" />
+                        
+                        <Button Command="{Binding ViewModel.ToggleModeCommand}" Content="Switch to Cool Idle" HorizontalAlignment="Stretch" Margin="0,0,0,8">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ViewModel.CurrentMode}" Value="AlwaysOn">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button Command="{Binding ViewModel.ToggleModeCommand}" Content="Switch to Always-On" HorizontalAlignment="Stretch" Margin="0,0,0,8">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource WarningButtonStyle}">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ViewModel.CurrentMode}" Value="CoolIdle">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        
+                        <Button Content="Refresh Sensors &amp; Data" Command="{Binding ViewModel.RefreshCommand}" Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Stretch" Margin="0,0,0,16" />
+                        
+                        <CheckBox Content="Start with Windows (Minimized)" 
+                                  IsChecked="{Binding ViewModel.StartWithWindows, Mode=TwoWay}" 
+                                  Foreground="{StaticResource MutedBrush}" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+            
+            <!-- RIGHT COLUMN -->
+            <StackPanel Grid.Column="1">
+                <!-- Card 3: Thermals & Telemetry -->
+                <Border Background="#1B1D26" CornerRadius="16" Padding="20" Margin="0,0,0,16" BorderBrush="#2C2E37" BorderThickness="1">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            
+                            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                                <TextBlock Text="CPU Temperature" Foreground="{StaticResource MutedBrush}" FontSize="14" />
+                                <TextBlock Text="{Binding ViewModel.PackageTempText}" Margin="0,4,0,0" FontSize="36" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}" />
+                            </StackPanel>
+                            
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Mode:" Foreground="{StaticResource ForegroundBrush}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBlock Grid.Column="1" Text="{Binding ViewModel.ModeValueText}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ViewModel.CurrentMode}" Value="AlwaysOn">
+                                                        <Setter Property="Foreground" Value="{StaticResource AlwaysOnBrush}" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding ViewModel.CurrentMode}" Value="CoolIdle">
+                                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                                
+                                <TextBlock Text="{Binding ViewModel.AutomationStatusText}" Foreground="{StaticResource AccentBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                
+                                <StackPanel Orientation="Vertical">
+                                    <TextBlock Text="{Binding ViewModel.CoreLabel}" ToolTip="Core Parking Min Cores (AC/DC)" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,0,0,2" />
+                                    <TextBlock Text="{Binding ViewModel.IdleLabel}" ToolTip="Idle State Max (AC/DC)" Foreground="{StaticResource MutedBrush}" FontSize="12" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                        
+                        <lvc:CartesianChart
+                            Series="{Binding ViewModel.TemperatureSeries}"
+                            Height="45"
+                            Margin="0,16,0,0"
+                            Background="Transparent"
+                            TooltipPosition="Hidden"
+                            XAxes="{Binding ViewModel.EmptyAxes}"
+                            YAxes="{Binding ViewModel.TempYAxes}">
+                        </lvc:CartesianChart>
+                    </StackPanel>
+                </Border>
+
+                <!-- Card 4: Core Parking Status -->
+                <Border Background="#1B1D26" CornerRadius="16" Padding="20" BorderBrush="#2C2E37" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Logical Core Parking Status" Foreground="{StaticResource MutedBrush}" FontSize="14" Margin="0,0,0,12" />
+                        
+                        <ItemsControl ItemsSource="{Binding ViewModel.Cores}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="{Binding ViewModel.CoreColumns}" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="6" Margin="3" ToolTip="{Binding CoreName}" MinHeight="32">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#4CAF50" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsParked}" Value="True">
+                                                        <Setter Property="Background" Value="#2C2E37" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock Text="{Binding CoreName, Converter={StaticResource CoreNameToNumberConverter}}" 
+                                                   Foreground="White" 
+                                                   FontSize="12" 
+                                                   FontWeight="SemiBold" 
+                                                   HorizontalAlignment="Center" 
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Grid>
+</TabItem>
+<TabItem Header="Monitoring">
                         <Border Background="#1B1D26"
                                 CornerRadius="20"
                                 Padding="24"
                                 Margin="0 0 0 16"
                                 BorderBrush="#2C2E37"
-                                BorderThickness="1"
-                                MinHeight="380"
-                                MaxHeight="380">
+                                BorderThickness="1">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -487,12 +609,12 @@
                                                     <RowDefinition Height="*" />
                                                 </Grid.RowDefinitions>
 
-                                                <Grid Margin="0 0 0 6">
+                                                <Grid Margin="12 0 22 6">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="100" />
+                                                        <ColumnDefinition Width="80" />
+                                                        <ColumnDefinition Width="80" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Text="Sensor"
                                                                Foreground="{StaticResource MutedBrush}"
@@ -527,7 +649,7 @@
                                                           Background="Transparent"
                                                           BorderThickness="0"
                                                           Foreground="{StaticResource ForegroundBrush}"
-                                                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                          ScrollViewer.VerticalScrollBarVisibility="Visible"
                                                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                                           HorizontalContentAlignment="Stretch"
                                                           Margin="0"
@@ -565,35 +687,37 @@
                                                     </ListView.GroupStyle>
                                                     <ListView.ItemTemplate>
                                                         <DataTemplate>
-                                                            <Grid>
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <TextBlock Text="{Binding SensorDisplayName}"
-                                                                           Foreground="{StaticResource MutedBrush}"
-                                                                           FontSize="14"
-                                                                           FontWeight="SemiBold"
-                                                                           TextTrimming="CharacterEllipsis" />
-                                                                <TextBlock Grid.Column="1"
-                                                                           Text="{Binding CurrentDisplay}"
-                                                                           Margin="24 0 0 0"
-                                                                           FontSize="15"
-                                                                           FontWeight="SemiBold"
-                                                                           HorizontalAlignment="Right" />
-                                                                <TextBlock Grid.Column="2"
-                                                                           Text="{Binding MinDisplay}"
-                                                                           Margin="24 0 0 0"
-                                                                           HorizontalAlignment="Right"
-                                                                           FontSize="13" />
-                                                                <TextBlock Grid.Column="3"
-                                                                           Text="{Binding MaxDisplay}"
-                                                                           Margin="24 0 0 0"
-                                                                           HorizontalAlignment="Right"
-                                                                           FontSize="13" />
-                                                            </Grid>
+                                                            <Border BorderThickness="0,0,0,1" BorderBrush="#2C2E37" Padding="0,8">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="100" />
+                                                                        <ColumnDefinition Width="80" />
+                                                                        <ColumnDefinition Width="80" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Text="{Binding SensorDisplayName}"
+                                                                               Foreground="{StaticResource MutedBrush}"
+                                                                               FontSize="14"
+                                                                               FontWeight="SemiBold"
+                                                                               TextTrimming="CharacterEllipsis" />
+                                                                    <TextBlock Grid.Column="1"
+                                                                               Text="{Binding CurrentDisplay}"
+                                                                               Margin="24 0 0 0"
+                                                                               FontSize="15"
+                                                                               FontWeight="SemiBold"
+                                                                               HorizontalAlignment="Right" />
+                                                                    <TextBlock Grid.Column="2"
+                                                                               Text="{Binding MinDisplay}"
+                                                                               Margin="24 0 0 0"
+                                                                               HorizontalAlignment="Right"
+                                                                               FontSize="13" />
+                                                                    <TextBlock Grid.Column="3"
+                                                                               Text="{Binding MaxDisplay}"
+                                                                               Margin="24 0 0 0"
+                                                                               HorizontalAlignment="Right"
+                                                                               FontSize="13" />
+                                                                </Grid>
+                                                            </Border>
                                                         </DataTemplate>
                                                     </ListView.ItemTemplate>
                                                 </ListView>
@@ -619,6 +743,78 @@
                                         </TextBlock>
                                     </Grid>
                                 </Grid>
+                            </Grid>
+                        </Border>
+                    </TabItem>
+                    
+                    <TabItem Header="Automation">
+                        <Border Background="#1B1D26"
+                                CornerRadius="20"
+                                Padding="24"
+                                Margin="0 0 0 16"
+                                BorderBrush="#2C2E37"
+                                BorderThickness="1">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <!-- Smart Battery Toggle -->
+                                <StackPanel Grid.Row="0" Margin="0,0,0,24">
+                                    <TextBlock Text="Smart Battery Detection" Foreground="{StaticResource ForegroundBrush}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <TextBlock Text="Automatically forces 'Cool Idle' when unplugged, ignoring games." Foreground="{StaticResource MutedBrush}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                    <CheckBox Content="Enable Smart Battery Override" IsChecked="{Binding ViewModel.AutomationSettings.SmartBatteryEnabled}" Foreground="{StaticResource ForegroundBrush}" />
+                                </StackPanel>
+
+                                <!-- Game Auto-Switching -->
+                                <Grid Grid.Row="1" Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Game Auto-Switching" Foreground="{StaticResource ForegroundBrush}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                        <TextBlock Text="Forces 'Always-On' when these apps are running." Foreground="{StaticResource MutedBrush}" FontSize="13" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="Pick Running..." Command="{Binding ViewModel.AddRunningGameCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="16 8" Margin="0 0 10 0" />
+                                    <Button Grid.Column="2" Content="Browse..." Command="{Binding ViewModel.AddGameExecutableCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="16 8" />
+                                </Grid>
+
+                                <!-- Configured Games List -->
+                                <Border Grid.Row="2" Background="#161821" BorderBrush="#2C2E37" BorderThickness="1" CornerRadius="12" Padding="8">
+                                    <ListView ItemsSource="{Binding ViewModel.TargetExecutableViewModels}" 
+                                              Background="Transparent" BorderThickness="0" Foreground="{StaticResource ForegroundBrush}"
+                                              ItemContainerStyle="{StaticResource ListRowItemStyle}">
+                                        <ListView.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,12,0" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Foreground="{StaticResource ForegroundBrush}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    <Button Grid.Column="2" 
+                                                            Content="✕" 
+                                                            Command="{Binding DataContext.ViewModel.RemoveGameExecutableCommand, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Foreground="{StaticResource MutedBrush}"
+                                                            FontSize="16"
+                                                            Cursor="Hand"
+                                                            FontWeight="Bold"
+                                                            Padding="8,0"
+                                                            ToolTip="Remove Game" />
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListView.ItemTemplate>
+                                    </ListView>
+                                </Border>
                             </Grid>
                         </Border>
                     </TabItem>

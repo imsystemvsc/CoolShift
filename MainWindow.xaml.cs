@@ -12,6 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using ParkToggleWpf.Monitoring;
+using ParkToggleWpf.ViewModels;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Controls;
@@ -19,42 +20,15 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
-using NotifyIcon = System.Windows.Forms.NotifyIcon;
-using ContextMenuStrip = System.Windows.Forms.ContextMenuStrip;
-using ToolStripMenuItem = System.Windows.Forms.ToolStripMenuItem;
-using ToolStripSeparator = System.Windows.Forms.ToolStripSeparator;
-using ToolTipIcon = System.Windows.Forms.ToolTipIcon;
-using DrawingIcon = System.Drawing.Icon;
-using DiagnosticsProcess = System.Diagnostics.Process;
-using Brush = System.Windows.Media.Brush;
-using InputCursors = System.Windows.Input.Cursors;
-using MessageBox = System.Windows.MessageBox;
-
-using Style = System.Windows.Style;
+using NHotkey;
+using NHotkey.Wpf;
 
 namespace ParkToggleWpf;
 
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
-    private readonly PowerPlanService _service = new();
-    private CancellationTokenSource? _refreshCts;
-    private bool _isPopulatingPlans;
-
-    private NotifyIcon? _trayIcon;
     private bool _isExitRequested;
     private bool _hasShownTrayTip;
-
-    private byte[]? _iconDefaultBytes;
-    private byte[]? _iconAlwaysOnBytes;
-    private byte[]? _iconCoolIdleBytes;
-
-    private ToolStripMenuItem? _trayCurrentModeItem;
-    private ToolStripMenuItem? _trayToggleItem;
-    private ToolStripMenuItem? _trayShowWindowItem;
-    private ToolStripMenuItem? _trayShowLogItem;
-
-    private CpuTemperatureService? _cpuTemperatureService;
-    private DispatcherTimer? _cpuTimer;
 
     private MonitoringOptions? _monitoringOptions;
     private MonitoringRepository? _monitoringRepository;
@@ -70,7 +44,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private bool _monitoringInitialized;
 
     private static readonly TimeSpan BringToFrontDelay = TimeSpan.FromMilliseconds(120);
-    private static readonly TimeSpan CpuPollingInterval = TimeSpan.FromMilliseconds(2000);
+
+    public MainViewModel ViewModel { get; }
 
     public ObservableCollection<SensorSelectionViewModel> MonitoringSensors => _monitoringSensors;
 
@@ -87,9 +62,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public MainWindow()
     {
         InitializeComponent();
+        ViewModel = new MainViewModel();
         DataContext = this;
         _monitoringSensors.CollectionChanged += MonitoringSensorsOnCollectionChanged;
-        InitializeTrayIcon();
+
+        if (Environment.GetCommandLineArgs().Contains("--hidden"))
+        {
+            WindowState = WindowState.Minimized;
+            ShowInTaskbar = false;
+            _hasShownTrayTip = true; // prevent balloon tip on auto-start
+        }
 
         Loaded += OnLoaded;
         SourceInitialized += OnSourceInitialized;
@@ -99,33 +81,24 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         try
         {
-            _cpuTemperatureService = new CpuTemperatureService();
-            _cpuTimer = new DispatcherTimer(DispatcherPriority.Background)
-            {
-                Interval = CpuPollingInterval
-            };
-            _cpuTimer.Tick += (_, _) => UpdateCpuTemperatures();
+            HotkeyManager.Current.AddOrReplace("ToggleMode", Key.P, ModifierKeys.Control | ModifierKeys.Shift, OnToggleModeHotkey);
         }
-        catch
+        catch (Exception ex)
         {
-            _cpuTemperatureService = null;
-            _cpuTimer = null;
-            if (PackageTempText != null)
-            {
-                PackageTempText.Text = "Unavailable";
-            }
+            Trace.WriteLine($"Failed to register global hotkey: {ex.Message}");
+        }
+    }
+
+    private async void OnToggleModeHotkey(object? sender, HotkeyEventArgs e)
+    {
+        if (!ViewModel.IsBusy)
+        {
+            await ViewModel.ToggleModeAsync();
         }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
-        if (_cpuTemperatureService is not null)
-        {
-            UpdateCpuTemperatures();
-            _cpuTimer?.Start();
-        }
-
-        await RefreshAsync().ConfigureAwait(false);
         await InitializeMonitoringAsync().ConfigureAwait(false);
         await BringToFrontAsync().ConfigureAwait(false);
     }
@@ -149,85 +122,21 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         await Dispatcher.InvokeAsync(() => Topmost = false, DispatcherPriority.Loaded);
     }
 
-    private void InitializeTrayIcon()
-    {
-        if (_trayIcon != null)
-        {
-            return;
-        }
-
-        EnsureTrayIconAssets();
-
-        var notifyIcon = new NotifyIcon
-        {
-            Text = "Park Toggle",
-            Visible = true
-        };
-
-        var initialIcon = CreateIconFromBytes(_iconDefaultBytes) ?? (DrawingIcon)System.Drawing.SystemIcons.Application.Clone();
-        notifyIcon.Icon = initialIcon;
-
-        notifyIcon.DoubleClick += (_, _) => Dispatcher.Invoke(ToggleWindowVisibilityFromTray);
-
-        notifyIcon.ContextMenuStrip = CreateTrayMenu();
-
-        _trayIcon = notifyIcon;
-    }
-
-    private ContextMenuStrip CreateTrayMenu()
-    {
-        var menu = new ContextMenuStrip();
-
-        _trayCurrentModeItem = new ToolStripMenuItem("Current Mode: --")
-        {
-            Enabled = false
-        };
-        menu.Items.Add(_trayCurrentModeItem);
-        menu.Items.Add(new ToolStripSeparator());
-
-        _trayToggleItem = new ToolStripMenuItem("Switch Mode");
-        _trayToggleItem.Click += (_, _) => _ = Dispatcher.InvokeAsync(async () => await ToggleModeFromTrayAsync());
-        menu.Items.Add(_trayToggleItem);
-
-        menu.Items.Add(new ToolStripSeparator());
-
-        _trayShowWindowItem = new ToolStripMenuItem("Show Window");
-        _trayShowWindowItem.Click += (_, _) => Dispatcher.Invoke(ToggleWindowVisibilityFromTray);
-        menu.Items.Add(_trayShowWindowItem);
-
-        UpdateTrayWindowMenuText(IsVisible && WindowState != WindowState.Minimized);
-
-        _trayShowLogItem = new ToolStripMenuItem("Open Log");
-        _trayShowLogItem.Click += (_, _) => _ = Dispatcher.InvokeAsync(OpenLogFromTrayAsync);
-        menu.Items.Add(_trayShowLogItem);
-
-        menu.Items.Add(new ToolStripSeparator());
-
-        var exitItem = new ToolStripMenuItem("Exit");
-        exitItem.Click += (_, _) => Dispatcher.Invoke(ExitFromTray);
-        menu.Items.Add(exitItem);
-
-        return menu;
-    }
-
     private void OnWindowStateChanged(object? sender, EventArgs e)
     {
         if (WindowState == WindowState.Minimized && !_isExitRequested)
         {
             Hide();
             ShowInTaskbar = false;
-            UpdateTrayWindowMenuText(false);
 
             if (!_hasShownTrayTip)
             {
-                _trayIcon?.ShowBalloonTip(1500, "Park Toggle", "Park Toggle is still running in the background.", ToolTipIcon.Info);
                 _hasShownTrayTip = true;
             }
         }
         else if (WindowState == WindowState.Normal)
         {
             ShowInTaskbar = true;
-            UpdateTrayWindowMenuText(true);
         }
     }
 
@@ -238,27 +147,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             e.Cancel = true;
             Hide();
             ShowInTaskbar = false;
-            UpdateTrayWindowMenuText(false);
-            _trayIcon?.ShowBalloonTip(1000, "Park Toggle", "Double-click the tray icon to reopen.", ToolTipIcon.Info);
             return;
-        }
-
-        if (_trayIcon is not null)
-        {
-            _trayIcon.Visible = false;
-            _trayIcon.Dispose();
-            _trayIcon = null;
         }
     }
 
     private void OnClosed(object? sender, EventArgs e)
     {
-        _refreshCts?.Cancel();
-        _trayIcon?.Dispose();
-        _cpuTimer?.Stop();
-        _cpuTemperatureService?.Dispose();
-        _cpuTimer = null;
-        _cpuTemperatureService = null;
+        ViewModel.Dispose();
 
         if (_monitoringManager is not null)
         {
@@ -273,389 +168,40 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _monitoringInitialized = false;
     }
 
-    private void RestoreFromTray()
+    public void RestoreFromTray()
     {
         Show();
         ShowInTaskbar = true;
         WindowState = WindowState.Normal;
         Activate();
-        UpdateTrayWindowMenuText(true);
     }
 
-    private void ExitFromTray()
+    public void ExitApplication()
     {
         _isExitRequested = true;
-        Close();
+        
+        Dispatcher.InvokeAsync(async () =>
+        {
+            await Task.Delay(150); // Allow the context menu time to close
+            TrayIcon.Visibility = Visibility.Collapsed;
+            TrayIcon.Dispose();
+            Environment.Exit(0);
+        }, DispatcherPriority.Background);
     }
 
-    private async void ToggleButton_Click(object sender, RoutedEventArgs e)
+    private void TaskbarIcon_TrayMouseDoubleClick(object sender, RoutedEventArgs e)
     {
-        if (PlanCombo.SelectedItem is not PowerPlan plan)
-        {
-            return;
-        }
-
-        await ExecuteWithBusyAsync(async () =>
-        {
-            await _service.ToggleModeAsync(plan.Guid, plan.Name).ConfigureAwait(false);
-            await RefreshAsync(manageBusy: false).ConfigureAwait(false);
-        }).ConfigureAwait(false);
+        RestoreFromTray();
     }
 
-    private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+    private void ShowWindow_Click(object sender, RoutedEventArgs e)
     {
-        await RefreshAsync().ConfigureAwait(false);
+        RestoreFromTray();
     }
 
-    private async void PlanCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void Exit_Click(object sender, RoutedEventArgs e)
     {
-        if (_isPopulatingPlans || PlanCombo.SelectedItem is not PowerPlan plan)
-        {
-            return;
-        }
-
-        await ExecuteWithBusyAsync(async () =>
-        {
-            await _service.SetActivePlanAsync(plan.Guid, plan.Name).ConfigureAwait(false);
-            await RefreshAsync(manageBusy: false).ConfigureAwait(false);
-        }).ConfigureAwait(false);
-    }
-
-    private async Task ToggleModeFromTrayAsync()
-    {
-        if (PlanCombo.SelectedItem is not PowerPlan plan)
-        {
-            return;
-        }
-
-        await ExecuteWithBusyAsync(async () =>
-        {
-            await _service.ToggleModeAsync(plan.Guid, plan.Name).ConfigureAwait(false);
-            await RefreshAsync(manageBusy: false).ConfigureAwait(false);
-        }).ConfigureAwait(false);
-    }
-
-    private Task OpenLogFromTrayAsync()
-    {
-        try
-        {
-            var logPath = _service.LogPath;
-            if (!File.Exists(logPath))
-            {
-                File.WriteAllText(logPath, string.Empty);
-            }
-
-            var psi = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = logPath,
-                UseShellExecute = true
-            };
-
-            DiagnosticsProcess.Start(psi);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                this,
-                $"Unable to open the log file.{Environment.NewLine}{ex.Message}",
-                "Park Toggle",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private void ToggleWindowVisibilityFromTray()
-    {
-        if (_trayShowWindowItem is null)
-        {
-            return;
-        }
-
-        if (IsVisible && WindowState != WindowState.Minimized)
-        {
-            Hide();
-            ShowInTaskbar = false;
-            UpdateTrayWindowMenuText(false);
-        }
-        else
-        {
-            RestoreFromTray();
-        }
-    }
-
-    private void UpdateTrayWindowMenuText(bool isVisible)
-    {
-        if (_trayShowWindowItem is null)
-        {
-            return;
-        }
-
-        _trayShowWindowItem.Text = isVisible ? "Hide Window" : "Show Window";
-    }
-
-    private void UpdateCpuTemperatures()
-    {
-        if (_cpuTemperatureService is null)
-        {
-            PackageTempText.Text = "N/A";
-            return;
-        }
-
-        CpuTemperatureSnapshot snapshot;
-        try
-        {
-            snapshot = _cpuTemperatureService.GetSnapshot();
-        }
-        catch
-        {
-            snapshot = CpuTemperatureSnapshot.Empty;
-        }
-
-        PackageTempText.Text = FormatTemperature(snapshot.PackageCelsius);
-    }
-
-    private static string FormatTemperature(double? value)
-    {
-        return value.HasValue
-            ? $"{value.Value.ToString("F1", CultureInfo.InvariantCulture)} \u00B0C"
-            : "N/A";
-    }
-
-    private async Task ExecuteWithBusyAsync(Func<Task> action)
-    {
-        await Dispatcher.InvokeAsync(() => SetBusyState(true), DispatcherPriority.Normal);
-        try
-        {
-            await action().ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            await Dispatcher.InvokeAsync(() => ShowError("Operation failed.", ex), DispatcherPriority.Normal);
-        }
-        finally
-        {
-            await Dispatcher.InvokeAsync(() => SetBusyState(false), DispatcherPriority.Normal);
-        }
-    }
-
-    private async Task RefreshAsync(bool manageBusy = true, CancellationToken token = default)
-    {
-        _refreshCts?.Cancel();
-        _refreshCts?.Dispose();
-
-        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(token);
-        _refreshCts = linkedCts;
-
-        if (manageBusy)
-        {
-            await Dispatcher.InvokeAsync(() => SetBusyState(true), DispatcherPriority.Normal);
-        }
-
-        try
-        {
-            var plans = await _service.GetPlansAsync(linkedCts.Token).ConfigureAwait(false);
-            var planList = plans.ToList();
-            var active = planList.FirstOrDefault(p => p.IsActive) ?? await _service.GetActivePlanAsync(linkedCts.Token).ConfigureAwait(false);
-
-            if (linkedCts.IsCancellationRequested)
-            {
-                return;
-            }
-
-            await Dispatcher.InvokeAsync(() => PopulatePlanCombo(planList, active.Guid), DispatcherPriority.Normal);
-
-            var snapshot = await _service.GetModeSnapshotAsync(active.Guid, linkedCts.Token).ConfigureAwait(false);
-            if (linkedCts.IsCancellationRequested)
-            {
-                return;
-            }
-
-            await Dispatcher.InvokeAsync(() =>
-            {
-                UpdateModeUi(snapshot);
-                UpdateToggleUi(snapshot.Mode);
-                UpdateDetails(snapshot);
-            }, DispatcherPriority.Background);
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception ex)
-        {
-            await Dispatcher.InvokeAsync(() => ShowError("Unable to refresh power settings.", ex), DispatcherPriority.Normal);
-        }
-        finally
-        {
-            if (manageBusy)
-            {
-                await Dispatcher.InvokeAsync(() => SetBusyState(false), DispatcherPriority.Normal);
-            }
-
-            if (_refreshCts == linkedCts)
-            {
-                _refreshCts = null;
-            }
-
-            linkedCts.Dispose();
-        }
-    }
-
-    private void PopulatePlanCombo(IReadOnlyList<PowerPlan> plans, string activeGuid)
-    {
-        _isPopulatingPlans = true;
-        try
-        {
-            var list = plans.ToList();
-            PlanCombo.ItemsSource = list;
-            PlanCombo.DisplayMemberPath = nameof(PowerPlan.Name);
-            PlanCombo.SelectedValuePath = nameof(PowerPlan.Guid);
-
-            PlanCombo.SelectedValue = activeGuid;
-            var selected = list.FirstOrDefault(p => string.Equals(p.Guid, activeGuid, StringComparison.OrdinalIgnoreCase))
-                           ?? list.FirstOrDefault();
-            PlanCombo.SelectedItem = selected;
-        }
-        finally
-        {
-            _isPopulatingPlans = false;
-        }
-    }
-
-    private void UpdateModeUi(ModeSnapshot snapshot)
-    {
-        ModeValueText.Text = PowerPlanService.ModeToDisplay(snapshot.Mode);
-        Brush accentBrush = (Brush)FindResource("AccentBrush");
-        Brush alwaysOnBrush = (Brush)FindResource("AlwaysOnBrush");
-        Brush defaultBrush = (Brush)FindResource("ForegroundBrush");
-
-        ModeValueText.Foreground = snapshot.Mode switch
-        {
-            ParkMode.AlwaysOn => alwaysOnBrush,
-            ParkMode.CoolIdle => accentBrush,
-            _ => defaultBrush
-        };
-    }
-
-    private void UpdateToggleUi(ParkMode mode)
-    {
-        ToggleButton.Style = mode == ParkMode.CoolIdle
-            ? (Style)FindResource("WarningButtonStyle")
-            : (Style)FindResource("PrimaryButtonStyle");
-
-        ToggleButton.Content = mode == ParkMode.CoolIdle
-            ? "Switch to Always-On"
-            : "Switch to Cool Idle";
-
-        UpdateTrayMenuForMode(mode);
-        UpdateTrayIcon(mode);
-    }
-
-    private void UpdateDetails(ModeSnapshot snapshot)
-    {
-        CoreLabel.Text = $"Core Parking Min Cores (AC/DC): {snapshot.Core.Ac}/{snapshot.Core.Dc}";
-        IdleLabel.Text = $"Idle State Max (AC/DC): {snapshot.Idle.Ac}/{snapshot.Idle.Dc}";
-    }
-
-    private void SetBusyState(bool isBusy)
-    {
-        ToggleButton.IsEnabled = !isBusy;
-        RefreshButton.IsEnabled = !isBusy;
-        PlanCombo.IsEnabled = !isBusy && !_isPopulatingPlans;
-        Mouse.OverrideCursor = isBusy ? InputCursors.AppStarting : null;
-    }
-
-    private void ShowError(string message, Exception exception)
-    {
-        MessageBox.Show(
-            this,
-            $"{message}{Environment.NewLine}{exception.Message}",
-            "Park Toggle",
-            MessageBoxButton.OK,
-            MessageBoxImage.Error);
-    }
-
-    private void UpdateTrayMenuForMode(ParkMode mode)
-    {
-        if (_trayCurrentModeItem is not null)
-        {
-            _trayCurrentModeItem.Text = $"Current Mode: {PowerPlanService.ModeToDisplay(mode)}";
-        }
-
-        if (_trayToggleItem is not null)
-        {
-            _trayToggleItem.Text = mode == ParkMode.CoolIdle
-                ? "Switch to Always-On"
-                : "Switch to Cool Idle";
-        }
-    }
-
-    private void UpdateTrayIcon(ParkMode mode)
-    {
-        if (_trayIcon is null)
-        {
-            return;
-        }
-
-        EnsureTrayIconAssets();
-
-        DrawingIcon? nextIcon = mode switch
-        {
-            ParkMode.AlwaysOn => CreateIconFromBytes(_iconAlwaysOnBytes),
-            ParkMode.CoolIdle => CreateIconFromBytes(_iconCoolIdleBytes),
-            _ => CreateIconFromBytes(_iconDefaultBytes)
-        };
-
-        nextIcon ??= CreateIconFromBytes(_iconDefaultBytes) ?? (DrawingIcon)System.Drawing.SystemIcons.Application.Clone();
-
-        var previous = _trayIcon.Icon;
-        _trayIcon.Icon = nextIcon;
-        previous?.Dispose();
-    }
-
-    private void EnsureTrayIconAssets()
-    {
-        _iconDefaultBytes ??= LoadIconBytes("main.ico");
-        _iconAlwaysOnBytes ??= LoadIconBytes("lightningbolt.ico");
-        _iconCoolIdleBytes ??= LoadIconBytes("snowflake.ico");
-    }
-
-    private static byte[]? LoadIconBytes(string fileName)
-    {
-        try
-        {
-            var uri = new Uri($"pack://application:,,,/Resources/Icons/{fileName}", UriKind.Absolute);
-            var streamInfo = System.Windows.Application.GetResourceStream(uri);
-            if (streamInfo?.Stream is Stream stream)
-            {
-                using var ms = new MemoryStream();
-                stream.CopyTo(ms);
-                return ms.ToArray();
-            }
-        }
-        catch
-        {
-        }
-
-        var filePath = Path.Combine(AppContext.BaseDirectory, "Resources", "Icons", fileName);
-        if (File.Exists(filePath))
-        {
-            return File.ReadAllBytes(filePath);
-        }
-
-        return null;
-    }
-
-    private static DrawingIcon? CreateIconFromBytes(byte[]? data)
-    {
-        if (data is null || data.Length == 0)
-        {
-            return null;
-        }
-
-        using var ms = new MemoryStream(data);
-        return new DrawingIcon(ms);
+        ExitApplication();
     }
 
     private async Task InitializeMonitoringAsync()
@@ -681,7 +227,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             Trace.WriteLine($"Monitoring initialization failed: {ex}");
             await Dispatcher.InvokeAsync(() =>
             {
-                MessageBox.Show(this, "Monitoring is unavailable. Please check hardware monitor permissions.", "Monitoring", MessageBoxButton.OK, MessageBoxImage.Warning);
+                System.Windows.MessageBox.Show(this, "Monitoring is unavailable. Please check hardware monitor permissions.", "Monitoring", MessageBoxButton.OK, MessageBoxImage.Warning);
             }, DispatcherPriority.Background);
         }
     }

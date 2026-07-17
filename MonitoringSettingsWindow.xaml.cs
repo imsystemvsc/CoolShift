@@ -20,8 +20,26 @@ public partial class MonitoringSettingsWindow : Window
 
         Sensors.CollectionChanged += SensorsOnCollectionChanged;
         Closed += OnClosed;
+        SourceInitialized += OnSourceInitialized;
 
         RebuildTree();
+    }
+
+    [System.Runtime.InteropServices.DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)) return;
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        
+        int dark = 1;
+        DwmSetWindowAttribute(hwnd, 20, ref dark, sizeof(int));
+        DwmSetWindowAttribute(hwnd, 19, ref dark, sizeof(int));
+        
+        int corner = 2; // Round
+        DwmSetWindowAttribute(hwnd, 33, ref corner, sizeof(int));
     }
 
     public ObservableCollection<SensorSelectionViewModel> Sensors { get; }
