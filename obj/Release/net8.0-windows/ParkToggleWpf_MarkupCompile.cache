@@ -4,17 +4,17 @@
 winexe
 C#
 .cs
-C:\Users\james\Desktop\Park_toggle_workspace\ParkToggleWpf\obj\Release\net8.0-windows\
+H:\Projects\Parktoggle\obj\Release\net8.0-windows\
 ParkToggleWpf
 none
 false
 TRACE;RELEASE;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
-C:\Users\james\Desktop\Park_toggle_workspace\ParkToggleWpf\App.xaml
-2-1203512377
+H:\Projects\Parktoggle\App.xaml
+3-155351075
 
-17176573989
-231-1670723758
-MainWindow.xaml;MonitoringSettingsWindow.xaml;
+27753737313
+249108330439
+MainWindow.xaml;MonitoringSettingsWindow.xaml;ProcessPickerDialog.xaml;
 
 False
 

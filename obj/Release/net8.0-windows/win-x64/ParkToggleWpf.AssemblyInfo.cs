@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Imsystem Software")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+49d21fdbdf0762250f2da60b659fff81e378d0a2")]
 [assembly: System.Reflection.AssemblyProductAttribute("Park Toggle")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ParkToggleWpf")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

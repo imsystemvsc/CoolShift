@@ -10,21 +10,21 @@ using System.Threading.Tasks;
 
 namespace ParkToggleWpf;
 
-internal enum ParkMode
+public enum ParkMode
 {
-    CoolIdle,
+    Custom,
     AlwaysOn,
-    Custom
+    CoolIdle
 }
 
-internal sealed record PowerPlan(string Guid, string Name, bool IsActive)
+public sealed record PowerPlan(string Guid, string Name, bool IsActive)
 {
     public override string ToString() => Name;
 }
-internal sealed record PowerSettingValues(int Ac, int Dc);
-internal sealed record ModeSnapshot(ParkMode Mode, PowerSettingValues Core, PowerSettingValues Idle);
+public sealed record PowerSettingValues(int Ac, int Dc);
+public sealed record ModeSnapshot(ParkMode Mode, PowerSettingValues Core, PowerSettingValues Idle);
 
-internal sealed class PowerPlanService
+public sealed class PowerPlanService
 {
     private const string LogFileName = "ParkToggle.log";
 
@@ -556,7 +556,7 @@ internal sealed class PowerPlanService
         throw new InvalidOperationException(message);
     }
 
-    private void Log(string message, string level = "INFO")
+    public void Log(string message, string level = "INFO")
     {
         try
         {

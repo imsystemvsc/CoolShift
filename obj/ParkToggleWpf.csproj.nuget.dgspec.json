@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\james\\Desktop\\Park_toggle_workspace\\ParkToggleWpf\\ParkToggleWpf.csproj": {}
+    "H:\\Projects\\Parktoggle\\ParkToggleWpf.csproj": {}
   },
   "projects": {
-    "C:\\Users\\james\\Desktop\\Park_toggle_workspace\\ParkToggleWpf\\ParkToggleWpf.csproj": {
+    "H:\\Projects\\Parktoggle\\ParkToggleWpf.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\james\\Desktop\\Park_toggle_workspace\\ParkToggleWpf\\ParkToggleWpf.csproj",
+        "projectUniqueName": "H:\\Projects\\Parktoggle\\ParkToggleWpf.csproj",
         "projectName": "ParkToggleWpf",
-        "projectPath": "C:\\Users\\james\\Desktop\\Park_toggle_workspace\\ParkToggleWpf\\ParkToggleWpf.csproj",
+        "projectPath": "H:\\Projects\\Parktoggle\\ParkToggleWpf.csproj",
         "packagesPath": "C:\\Users\\james\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\james\\Desktop\\Park_toggle_workspace\\ParkToggleWpf\\obj\\",
+        "outputPath": "H:\\Projects\\Parktoggle\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -44,19 +44,42 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "10.0.200"
       },
       "frameworks": {
         "net8.0-windows7.0": {
           "targetAlias": "net8.0-windows",
           "dependencies": {
+            "CommunityToolkit.Mvvm": {
+              "target": "Package",
+              "version": "[8.4.2, )"
+            },
+            "H.NotifyIcon.Wpf": {
+              "target": "Package",
+              "version": "[2.4.1, )",
+              "noWarn": [
+                "NU1701"
+              ]
+            },
             "LibreHardwareMonitorLib": {
               "target": "Package",
               "version": "[0.9.4, )"
             },
+            "LiveChartsCore.SkiaSharpView.WPF": {
+              "target": "Package",
+              "version": "[2.0.5, )"
+            },
             "Microsoft.EntityFrameworkCore.Sqlite": {
               "target": "Package",
               "version": "[9.0.9, )"
+            },
+            "NHotkey.Wpf": {
+              "target": "Package",
+              "version": "[4.0.0, )"
+            },
+            "System.Diagnostics.PerformanceCounter": {
+              "target": "Package",
+              "version": "[10.0.10, )"
             }
           },
           "imports": [
@@ -70,6 +93,24 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.27, 8.0.27]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Host.win-x64",
+              "version": "[8.0.27, 8.0.27]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.27, 8.0.27]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.27, 8.0.27]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
@@ -78,7 +119,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.204/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
