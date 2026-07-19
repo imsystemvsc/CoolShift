@@ -814,14 +814,16 @@
                                                         <GroupStyle>
                                                             <GroupStyle.HeaderTemplate>
                                                                 <DataTemplate>
-                                                                    <Border Background="#161821"
+                                                                    <Border Background="#1C1C1C"
+                                                                            BorderBrush="#333333"
+                                                                            BorderThickness="0 0 0 1"
                                                                             Padding="8 4"
-                                                                            CornerRadius="8"
+                                                                            CornerRadius="0"
                                                                             Margin="0 12 0 4">
                                                                         <TextBlock Text="{Binding Name}"
-                                                                                   Foreground="{StaticResource MutedBrush}"
-                                                                                   FontSize="13"
-                                                                                   FontWeight="SemiBold" />
+                                                                                   FontFamily="Bahnschrift"
+                                                                                   Foreground="{StaticResource ForegroundBrush}"
+                                                                                   FontSize="13" />
                                                                     </Border>
                                                                 </DataTemplate>
                                                             </GroupStyle.HeaderTemplate>
@@ -834,7 +836,7 @@
                                                     </ListView.GroupStyle>
                                                     <ListView.ItemTemplate>
                                                         <DataTemplate>
-                                                            <Border BorderThickness="0,0,0,1" BorderBrush="#2C2E37" Padding="0,8">
+                                                            <Border BorderThickness="0,0,0,1" BorderBrush="#333333" Padding="0,8">
                                                                 <Grid>
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="*" />
@@ -844,25 +846,29 @@
                                                                     </Grid.ColumnDefinitions>
                                                                     <TextBlock Text="{Binding SensorDisplayName}"
                                                                                Foreground="{StaticResource MutedBrush}"
-                                                                               FontSize="14"
-                                                                               FontWeight="SemiBold"
+                                                                               FontSize="13"
                                                                                TextTrimming="CharacterEllipsis" />
                                                                     <TextBlock Grid.Column="1"
                                                                                Text="{Binding CurrentDisplay}"
                                                                                Margin="24 0 0 0"
-                                                                               FontSize="15"
-                                                                               FontWeight="SemiBold"
+                                                                               FontFamily="Consolas, Cascadia Code, Courier New"
+                                                                               FontSize="14"
+                                                                               Foreground="{StaticResource ForegroundBrush}"
                                                                                HorizontalAlignment="Right" />
                                                                     <TextBlock Grid.Column="2"
                                                                                Text="{Binding MinDisplay}"
                                                                                Margin="24 0 0 0"
                                                                                HorizontalAlignment="Right"
-                                                                               FontSize="13" />
+                                                                               FontFamily="Consolas, Cascadia Code, Courier New"
+                                                                               Foreground="{StaticResource ForegroundBrush}"
+                                                                               FontSize="12" />
                                                                     <TextBlock Grid.Column="3"
                                                                                Text="{Binding MaxDisplay}"
                                                                                Margin="24 0 0 0"
                                                                                HorizontalAlignment="Right"
-                                                                               FontSize="13" />
+                                                                               FontFamily="Consolas, Cascadia Code, Courier New"
+                                                                               Foreground="{StaticResource ForegroundBrush}"
+                                                                               FontSize="12" />
                                                                 </Grid>
                                                             </Border>
                                                         </DataTemplate>
@@ -895,11 +901,11 @@
                     </TabItem>
                     
                     <TabItem Header="Automation">
-                        <Border Background="#1B1D26"
-                                CornerRadius="20"
+                        <Border Background="#1C1C1C"
+                                CornerRadius="2"
                                 Padding="24"
                                 Margin="0 0 0 16"
-                                BorderBrush="#2C2E37"
+                                BorderBrush="#333333"
                                 BorderThickness="1">
                             <Grid>
                                 <Grid.RowDefinitions>
@@ -910,7 +916,7 @@
 
                                 <!-- Smart Battery Toggle -->
                                 <StackPanel Grid.Row="0" Margin="0,0,0,24">
-                                    <TextBlock Text="Smart Battery Detection" Foreground="{StaticResource ForegroundBrush}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <TextBlock Text="SMART BATTERY DETECTION" FontFamily="Bahnschrift" Foreground="{StaticResource ForegroundBrush}" FontSize="16" Margin="0,0,0,4" />
                                     <TextBlock Text="Automatically forces 'Cool Idle' when unplugged, ignoring games." Foreground="{StaticResource MutedBrush}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,12" />
                                     <CheckBox Content="Enable Smart Battery Override" IsChecked="{Binding ViewModel.AutomationSettings.SmartBatteryEnabled}" Foreground="{StaticResource ForegroundBrush}" />
                                 </StackPanel>
@@ -923,7 +929,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <StackPanel>
-                                        <TextBlock Text="Game Auto-Switching" Foreground="{StaticResource ForegroundBrush}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                        <TextBlock Text="GAME AUTO-SWITCHING" FontFamily="Bahnschrift" Foreground="{StaticResource ForegroundBrush}" FontSize="16" Margin="0,0,0,4" />
                                         <TextBlock Text="Forces 'Always-On' when these apps are running." Foreground="{StaticResource MutedBrush}" FontSize="13" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <Button Grid.Column="1" Content="Pick Running..." Command="{Binding ViewModel.AddRunningGameCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="16 8" Margin="0 0 10 0" />
@@ -931,7 +937,7 @@
                                 </Grid>
 
                                 <!-- Configured Games List -->
-                                <Border Grid.Row="2" Background="#161821" BorderBrush="#2C2E37" BorderThickness="1" CornerRadius="12" Padding="8">
+                                <Border Grid.Row="2" Background="#1C1C1C" BorderBrush="#333333" BorderThickness="1" CornerRadius="2" Padding="8">
                                     <ListView ItemsSource="{Binding ViewModel.TargetExecutableViewModels}" 
                                               Background="Transparent" BorderThickness="0" Foreground="{StaticResource ForegroundBrush}"
                                               ItemContainerStyle="{StaticResource ListRowItemStyle}">
@@ -944,7 +950,7 @@
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,12,0" VerticalAlignment="Center" />
-                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Foreground="{StaticResource ForegroundBrush}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Foreground="{StaticResource ForegroundBrush}" FontSize="14" VerticalAlignment="Center" />
                                                     <Button Grid.Column="2" 
                                                             Content="✕" 
                                                             Command="{Binding DataContext.ViewModel.RemoveGameExecutableCommand, RelativeSource={RelativeSource AncestorType=Window}}" 
@@ -954,7 +960,6 @@
                                                             Foreground="{StaticResource MutedBrush}"
                                                             FontSize="16"
                                                             Cursor="Hand"
-                                                            FontWeight="Bold"
                                                             Padding="8,0"
                                                             ToolTip="Remove Game" />
                                                 </Grid>
