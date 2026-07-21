@@ -11,7 +11,7 @@
         MinHeight="480"
         MinWidth="540"
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource DialogBackgroundBrush}"
+        Background="{StaticResource WindowBackgroundBrush}"
         BorderBrush="{StaticResource CardBorderBrush}"
         BorderThickness="1">
 
@@ -45,7 +45,7 @@
 
             <!-- Search Box -->
             <Border Grid.Column="0"
-                    Background="#1B1D26"
+                    Background="{StaticResource CardBackgroundBrush}"
                     BorderBrush="{StaticResource CardBorderBrush}"
                     BorderThickness="1"
                     CornerRadius="6"
@@ -100,7 +100,7 @@
 
         <!-- Sensor Tree Area -->
         <Border Grid.Row="2"
-                Background="#161820"
+                Background="#141417"
                 BorderBrush="{StaticResource CardBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="8"
@@ -114,7 +114,7 @@
                     <TreeView.Resources>
                         <!-- Hardware Node Template -->
                         <HierarchicalDataTemplate DataType="{x:Type monitoring:MonitoringHardwareNode}" ItemsSource="{Binding Children}">
-                            <Border Background="#20232E" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,3">
+                            <Border Background="{StaticResource SubSectionHeaderBrush}" BorderBrush="{StaticResource SecondaryBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,3">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -167,8 +167,8 @@
                         
                         <!-- Sensor Leaf Node Template -->
                         <DataTemplate DataType="{x:Type monitoring:MonitoringSensorLeafNode}">
-                            <Border Background="#1A1C25"
-                                    BorderBrush="#252834"
+                            <Border Background="{StaticResource CardBackgroundBrush}"
+                                    BorderBrush="{StaticResource SecondaryBorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="4"
                                     Padding="8,6"
