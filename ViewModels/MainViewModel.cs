@@ -279,8 +279,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Values = new[] { _cpuLoadRemaining },
                 InnerRadius = 24,
                 MaxRadialColumnWidth = 12,
-                Fill = new SolidColorPaint(new SKColor(51, 51, 51)),
-                DataLabelsPaint = null
+                Fill = new SolidColorPaint(new SKColor(0, 0, 0, 0)),
+                DataLabelsPaint = null,
+                Stroke = null
             }
         };
 
@@ -299,8 +300,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Values = new[] { _gpuLoadRemaining },
                 InnerRadius = 24,
                 MaxRadialColumnWidth = 12,
-                Fill = new SolidColorPaint(new SKColor(51, 51, 51)),
-                DataLabelsPaint = null
+                Fill = new SolidColorPaint(new SKColor(0, 0, 0, 0)),
+                DataLabelsPaint = null,
+                Stroke = null
             }
         };
 
@@ -530,6 +532,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 _cpuLoadValue.Value = snapshot.CpuLoad.Value;
                 _cpuLoadRemaining.Value = Math.Max(0, 100 - snapshot.CpuLoad.Value);
                 CpuLoadText = $"{snapshot.CpuLoad.Value:F0}%";
+                if (CpuLoadSeries[0] is PieSeries<ObservableValue> cpuPie)
+                {
+                    cpuPie.Fill = new SolidColorPaint(GetLoadColor(snapshot.CpuLoad.Value));
+                }
             }
 
             if (snapshot.GpuLoad.HasValue)
@@ -537,6 +543,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 _gpuLoadValue.Value = snapshot.GpuLoad.Value;
                 _gpuLoadRemaining.Value = Math.Max(0, 100 - snapshot.GpuLoad.Value);
                 GpuLoadText = $"{snapshot.GpuLoad.Value:F0}%";
+                if (GpuLoadSeries[0] is PieSeries<ObservableValue> gpuPie)
+                {
+                    gpuPie.Fill = new SolidColorPaint(GetLoadColor(snapshot.GpuLoad.Value));
+                }
             }
 
             if (snapshot.PackageCelsius.HasValue)
@@ -631,5 +641,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _automationService.Dispose();
         _cpuTemperatureService?.Dispose();
         _coreParkingService?.Dispose();
+    }
+
+    private SKColor GetLoadColor(double load)
+    {
+        if (load < 40) return new SKColor(167, 196, 126); // Greenish
+        if (load < 75) return new SKColor(240, 220, 100); // Yellowish
+        return new SKColor(240, 100, 100); // Reddish
     }
 }
