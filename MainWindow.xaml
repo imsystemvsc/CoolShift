@@ -17,6 +17,7 @@
         Background="#121217">
     <Window.Resources>
         <converters:CoreNameToNumberConverter x:Key="CoreNameToNumberConverter" />
+        <converters:CategoryIconConverter x:Key="CategoryIconConverter" />
         <SolidColorBrush x:Key="WindowGradientTop" Color="#191919" />
         <SolidColorBrush x:Key="WindowGradientBottom" Color="#121212" />
         <LinearGradientBrush x:Key="WindowBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
@@ -880,8 +881,8 @@
                                                                                         <ColumnDefinition Width="Auto" />
                                                                                     </Grid.ColumnDefinitions>
                                                                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                                                        <Border Background="#252830" CornerRadius="4" Padding="5,2" Margin="0,0,8,0">
-                                                                                            <TextBlock Text="✦" Foreground="#A7C47E" FontSize="10" FontWeight="Bold" />
+                                                                                        <Border Background="#252830" CornerRadius="4" Padding="6,3" Margin="0,0,8,0">
+                                                                                            <TextBlock Text="{Binding Name, Converter={StaticResource CategoryIconConverter}}" FontSize="12" VerticalAlignment="Center" />
                                                                                         </Border>
                                                                                         <TextBlock Text="{Binding Name}"
                                                                                                    FontFamily="Bahnschrift"
@@ -920,13 +921,15 @@
                                                                 <ColumnDefinition Width="105" />
                                                             </Grid.ColumnDefinitions>
                                                             
-                                                            <!-- Sensor Name -->
-                                                            <TextBlock Grid.Column="0"
-                                                                       Text="{Binding SensorDisplayName}"
-                                                                       Foreground="{StaticResource MutedBrush}"
-                                                                       FontSize="12.5"
-                                                                       TextTrimming="CharacterEllipsis"
-                                                                       VerticalAlignment="Center" />
+                                                            <!-- Sensor Name with Icon -->
+                                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding SensorIcon}" FontSize="11.5" Margin="0,0,6,0" VerticalAlignment="Center" />
+                                                                <TextBlock Text="{Binding SensorDisplayName}"
+                                                                           Foreground="{StaticResource MutedBrush}"
+                                                                           FontSize="12.5"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           VerticalAlignment="Center" />
+                                                            </StackPanel>
 
                                                             <!-- Mini Progress Bar -->
                                                             <ProgressBar Grid.Column="1"
