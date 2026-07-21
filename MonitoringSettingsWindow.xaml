@@ -15,84 +15,6 @@
         BorderBrush="#2C2E37"
         BorderThickness="1">
     <Window.Resources>
-        <Style x:Key="OverlayScrollBarRepeatButtonStyle" TargetType="RepeatButton">
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RepeatButton">
-                        <Border Background="Transparent" />
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="SlimScrollBarStyle" TargetType="ScrollBar">
-            <Setter Property="Width" Value="8" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ScrollBar">
-                        <Grid x:Name="Root" Background="{TemplateBinding Background}">
-                            <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="True" Focusable="False">
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton x:Name="DecreaseButton" Command="{x:Static ScrollBar.LineUpCommand}" Style="{StaticResource OverlayScrollBarRepeatButtonStyle}" />
-                                </Track.DecreaseRepeatButton>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton x:Name="IncreaseButton" Command="{x:Static ScrollBar.LineDownCommand}" Style="{StaticResource OverlayScrollBarRepeatButtonStyle}" />
-                                </Track.IncreaseRepeatButton>
-                                <Track.Thumb>
-                                    <Thumb>
-                                        <Thumb.Template>
-                                            <ControlTemplate TargetType="Thumb">
-                                                <Border Background="#444856" Opacity="0.75" CornerRadius="4" />
-                                            </ControlTemplate>
-                                        </Thumb.Template>
-                                    </Thumb>
-                                </Track.Thumb>
-                            </Track>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="Orientation" Value="Horizontal">
-                                <Setter TargetName="Root" Property="Height" Value="{Binding Width, RelativeSource={RelativeSource TemplatedParent}}" />
-                                <Setter TargetName="Root" Property="Width" Value="Auto" />
-                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
-                                <Setter TargetName="DecreaseButton" Property="Command" Value="{x:Static ScrollBar.LineLeftCommand}" />
-                                <Setter TargetName="IncreaseButton" Property="Command" Value="{x:Static ScrollBar.LineRightCommand}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="ActionButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="#1E1F27" />
-            <Setter Property="Foreground" Value="#9AA0AE" />
-            <Setter Property="BorderBrush" Value="#2C2E37" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="12 5" />
-            <Setter Property="FontFamily" Value="Bahnschrift" />
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border"
-                                Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="4">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#2A2D38" />
-                                <Setter Property="Foreground" Value="#EEF0F4" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </Window.Resources>
 
     <Grid Margin="20">
@@ -171,10 +93,10 @@
 
             <!-- Quick Actions -->
             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <Button Content="Select All" Style="{StaticResource ActionButtonStyle}" Margin="0,0,6,0" Click="SelectAll_Click" />
-                <Button Content="Clear All" Style="{StaticResource ActionButtonStyle}" Margin="0,0,6,0" Click="DeselectAll_Click" />
-                <Button Content="Expand All" Style="{StaticResource ActionButtonStyle}" Margin="0,0,6,0" Click="ExpandAll_Click" />
-                <Button Content="Collapse All" Style="{StaticResource ActionButtonStyle}" Click="CollapseAll_Click" />
+                <Button Content="Select All" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,0" Click="SelectAll_Click" />
+                <Button Content="Clear All" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,0" Click="DeselectAll_Click" />
+                <Button Content="Expand All" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,0" Click="ExpandAll_Click" />
+                <Button Content="Collapse All" Style="{StaticResource SecondaryButtonStyle}" Click="CollapseAll_Click" />
             </StackPanel>
         </Grid>
 

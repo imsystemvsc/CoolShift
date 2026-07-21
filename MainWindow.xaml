@@ -42,44 +42,7 @@
             </Setter>
         </Style>
 
-        <Style x:Key="SlimScrollBarStyle" TargetType="ScrollBar">
-            <Setter Property="Width" Value="10" />
-            <Setter Property="Background" Value="#151822" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="ScrollBar">
-                        <Grid x:Name="Root" Background="{TemplateBinding Background}">
-                            <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}" IsDirectionReversed="True" Focusable="False">
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton x:Name="DecreaseButton" Command="{x:Static ScrollBar.LineUpCommand}" Style="{StaticResource OverlayScrollBarRepeatButtonStyle}" />
-                                </Track.DecreaseRepeatButton>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton x:Name="IncreaseButton" Command="{x:Static ScrollBar.LineDownCommand}" Style="{StaticResource OverlayScrollBarRepeatButtonStyle}" />
-                                </Track.IncreaseRepeatButton>
-                                <Track.Thumb>
-                                    <Thumb>
-                                        <Thumb.Template>
-                                            <ControlTemplate TargetType="Thumb">
-                                                <Border Background="#8CA9FF" Opacity="0.75" CornerRadius="4" />
-                                            </ControlTemplate>
-                                        </Thumb.Template>
-                                    </Thumb>
-                                </Track.Thumb>
-                            </Track>
-                        </Grid>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="Orientation" Value="Horizontal">
-                                <Setter TargetName="Root" Property="Height" Value="{Binding Width, RelativeSource={RelativeSource TemplatedParent}}" />
-                                <Setter TargetName="Root" Property="Width" Value="Auto" />
-                                <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
-                                <Setter TargetName="DecreaseButton" Property="Command" Value="{x:Static ScrollBar.LineLeftCommand}" />
-                                <Setter TargetName="IncreaseButton" Property="Command" Value="{x:Static ScrollBar.LineRightCommand}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+
 
         <SolidColorBrush x:Key="SecondaryBorderBrush" Color="#444444" />
         <SolidColorBrush x:Key="AlwaysOnBrush" Color="#FF5C00" />
