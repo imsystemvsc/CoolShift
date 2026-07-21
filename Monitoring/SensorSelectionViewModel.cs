@@ -137,6 +137,17 @@ public sealed class SensorSelectionViewModel : INotifyPropertyChanged
     public string MinDisplay => FormatValue(MinValue);
     public string MaxDisplay => FormatValue(MaxValue);
 
+    public bool HasProgress => SensorType == SensorType.Load || SensorType == SensorType.Temperature || SensorType == SensorType.Control || SensorType == SensorType.Level;
+
+    public double ProgressPercent
+    {
+        get
+        {
+            if (!CurrentValue.HasValue) return 0;
+            return Math.Min(100.0, Math.Max(0.0, CurrentValue.Value));
+        }
+    }
+
     public void SetSortOrder(int sortOrder)
     {
         SortOrder = sortOrder;
@@ -150,6 +161,7 @@ public sealed class SensorSelectionViewModel : INotifyPropertyChanged
         }
 
         CurrentValue = value;
+        OnPropertyChanged(nameof(ProgressPercent));
 
         if (!value.HasValue)
         {

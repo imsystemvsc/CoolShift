@@ -835,136 +835,143 @@
                                     </Grid.RowDefinitions>
 
                                     <Grid Grid.Row="0">
-                                        <Border Background="#1C1C1C"
-                                                BorderBrush="#333333"
-                                                BorderThickness="1"
-                                                CornerRadius="2">
-                                            <Grid>
-                                                <Grid.RowDefinitions>
-                                                    <RowDefinition Height="Auto" />
-                                                    <RowDefinition Height="*" />
-                                                </Grid.RowDefinitions>
+                                        <ListView x:Name="ActiveSensorsList"
+                                                  ItemsSource="{Binding MonitoringSensorsView}"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  Foreground="{StaticResource ForegroundBrush}"
+                                                  ScrollViewer.VerticalScrollBarVisibility="Visible"
+                                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                  HorizontalContentAlignment="Stretch"
+                                                  Margin="0"
+                                                  AllowDrop="True"
+                                                  PreviewMouseWheel="ActiveSensorsList_PreviewMouseWheel"
+                                                  PreviewMouseLeftButtonDown="ActiveSensorsList_PreviewMouseLeftButtonDown"
+                                                  MouseMove="ActiveSensorsList_MouseMove"
+                                                  DragOver="ActiveSensorsList_DragOver"
+                                                  Drop="ActiveSensorsList_Drop"
+                                                  ItemContainerStyle="{StaticResource ListRowItemStyle}">
+                                            <ListView.Resources>
+                                                <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBarStyle}" />
+                                            </ListView.Resources>
+                                            <ListView.GroupStyle>
+                                                <GroupStyle>
+                                                    <GroupStyle.Panel>
+                                                        <ItemsPanelTemplate>
+                                                            <UniformGrid Columns="2" VerticalAlignment="Top" />
+                                                        </ItemsPanelTemplate>
+                                                    </GroupStyle.Panel>
+                                                    <GroupStyle.ContainerStyle>
+                                                        <Style TargetType="GroupItem">
+                                                            <Setter Property="Margin" Value="0,0,12,12" />
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="GroupItem">
+                                                                        <Border Background="#191919"
+                                                                                BorderBrush="#333333"
+                                                                                BorderThickness="1"
+                                                                                CornerRadius="10"
+                                                                                Padding="16">
+                                                                            <StackPanel>
+                                                                                <!-- Category Card Header -->
+                                                                                <Grid Margin="0,0,0,12">
+                                                                                    <Grid.ColumnDefinitions>
+                                                                                        <ColumnDefinition Width="*" />
+                                                                                        <ColumnDefinition Width="Auto" />
+                                                                                    </Grid.ColumnDefinitions>
+                                                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                                        <Border Background="#252830" CornerRadius="4" Padding="6,3" Margin="0,0,8,0">
+                                                                                            <TextBlock Text="✦" Foreground="#A7C47E" FontSize="11" FontWeight="Bold" />
+                                                                                        </Border>
+                                                                                        <TextBlock Text="{Binding Name}"
+                                                                                                   FontFamily="Bahnschrift"
+                                                                                                   Foreground="#EEF0F4"
+                                                                                                   FontSize="14"
+                                                                                                   FontWeight="SemiBold" />
+                                                                                    </StackPanel>
+                                                                                    <TextBlock Grid.Column="1"
+                                                                                               Text="{Binding ItemCount, StringFormat='{}{0} Sensors'}"
+                                                                                               FontFamily="Bahnschrift"
+                                                                                               Foreground="{StaticResource MutedBrush}"
+                                                                                               FontSize="11"
+                                                                                               VerticalAlignment="Center" />
+                                                                                </Grid>
+                                                                                <Border Height="1" Background="#262626" Margin="0,0,0,10" />
 
-                                                <Grid Margin="12 0 22 6">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="100" />
-                                                        <ColumnDefinition Width="80" />
-                                                        <ColumnDefinition Width="80" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <TextBlock Text="SENSOR"
-                                                               FontFamily="Bahnschrift"
-                                                               Foreground="{StaticResource MutedBrush}"
-                                                               FontSize="12" />
-                                                    <TextBlock Grid.Column="1"
-                                                               Text="CURRENT"
-                                                               Margin="24 0 0 0"
-                                                               FontFamily="Bahnschrift"
-                                                               Foreground="{StaticResource MutedBrush}"
-                                                               FontSize="12"
-                                                               HorizontalAlignment="Right" />
-                                                    <TextBlock Grid.Column="2"
-                                                               Text="MIN"
-                                                               Margin="24 0 0 0"
-                                                               FontFamily="Bahnschrift"
-                                                               Foreground="{StaticResource MutedBrush}"
-                                                               FontSize="12"
-                                                               HorizontalAlignment="Right" />
-                                                    <TextBlock Grid.Column="3"
-                                                               Text="MAX"
-                                                               Margin="24 0 0 0"
-                                                               FontFamily="Bahnschrift"
-                                                               Foreground="{StaticResource MutedBrush}"
-                                                               FontSize="12"
-                                                               HorizontalAlignment="Right" />
-                                                </Grid>
+                                                                                <!-- Card Sensors -->
+                                                                                <ItemsPresenter />
+                                                                            </StackPanel>
+                                                                        </Border>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </Style>
+                                                    </GroupStyle.ContainerStyle>
+                                                </GroupStyle>
+                                            </ListView.GroupStyle>
+                                            <ListView.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderThickness="0,0,0,1" BorderBrush="#262626" Padding="4,8,4,10">
+                                                        <StackPanel>
+                                                            <Grid>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <TextBlock Text="{Binding SensorDisplayName}"
+                                                                           Foreground="{StaticResource MutedBrush}"
+                                                                           FontSize="13"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           VerticalAlignment="Center" />
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{Binding CurrentDisplay}"
+                                                                           FontFamily="Consolas, Cascadia Code, Courier New"
+                                                                           FontSize="14"
+                                                                           FontWeight="SemiBold"
+                                                                           Foreground="#EEF0F4"
+                                                                           HorizontalAlignment="Right" />
+                                                            </Grid>
 
-                                                <ListView Grid.Row="1"
-                                                          x:Name="ActiveSensorsList"
-                                                          ItemsSource="{Binding MonitoringSensorsView}"
-                                                          Background="Transparent"
-                                                          BorderThickness="0"
-                                                          Foreground="{StaticResource ForegroundBrush}"
-                                                          ScrollViewer.VerticalScrollBarVisibility="Visible"
-                                                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                                          HorizontalContentAlignment="Stretch"
-                                                          Margin="0"
-                                                          AllowDrop="True"
-                                                          PreviewMouseWheel="ActiveSensorsList_PreviewMouseWheel"
-                                                          PreviewMouseLeftButtonDown="ActiveSensorsList_PreviewMouseLeftButtonDown"
-                                                          MouseMove="ActiveSensorsList_MouseMove"
-                                                          DragOver="ActiveSensorsList_DragOver"
-                                                          Drop="ActiveSensorsList_Drop"
-                                                          ItemContainerStyle="{StaticResource ListRowItemStyle}">
-                                                    <ListView.Resources>
-                                                        <Style TargetType="ScrollBar" BasedOn="{StaticResource SlimScrollBarStyle}" />
-                                                    </ListView.Resources>
-                                                    <ListView.GroupStyle>
-                                                        <GroupStyle>
-                                                            <GroupStyle.HeaderTemplate>
-                                                                <DataTemplate>
-                                                                    <Border Background="#1C1C1C"
-                                                                            BorderBrush="#333333"
-                                                                            BorderThickness="0 0 0 1"
-                                                                            Padding="8 4"
-                                                                            CornerRadius="0"
-                                                                            Margin="0 12 0 4">
-                                                                        <TextBlock Text="{Binding Name}"
-                                                                                   FontFamily="Bahnschrift"
-                                                                                   Foreground="{StaticResource ForegroundBrush}"
-                                                                                   FontSize="13" />
-                                                                    </Border>
-                                                                </DataTemplate>
-                                                            </GroupStyle.HeaderTemplate>
-                                                            <GroupStyle.Panel>
-                                                                <ItemsPanelTemplate>
-                                                                    <StackPanel />
-                                                                </ItemsPanelTemplate>
-                                                            </GroupStyle.Panel>
-                                                        </GroupStyle>
-                                                    </ListView.GroupStyle>
-                                                    <ListView.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Border BorderThickness="0,0,0,1" BorderBrush="#333333" Padding="0,8">
-                                                                <Grid>
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="*" />
-                                                                        <ColumnDefinition Width="100" />
-                                                                        <ColumnDefinition Width="80" />
-                                                                        <ColumnDefinition Width="80" />
-                                                                    </Grid.ColumnDefinitions>
-                                                                    <TextBlock Text="{Binding SensorDisplayName}"
-                                                                               Foreground="{StaticResource MutedBrush}"
-                                                                               FontSize="13"
-                                                                               TextTrimming="CharacterEllipsis" />
-                                                                    <TextBlock Grid.Column="1"
-                                                                               Text="{Binding CurrentDisplay}"
-                                                                               Margin="24 0 0 0"
-                                                                               FontFamily="Consolas, Cascadia Code, Courier New"
-                                                                               FontSize="14"
-                                                                               Foreground="{StaticResource ForegroundBrush}"
-                                                                               HorizontalAlignment="Right" />
-                                                                    <TextBlock Grid.Column="2"
-                                                                               Text="{Binding MinDisplay}"
-                                                                               Margin="24 0 0 0"
-                                                                               HorizontalAlignment="Right"
-                                                                               FontFamily="Consolas, Cascadia Code, Courier New"
-                                                                               Foreground="{StaticResource ForegroundBrush}"
-                                                                               FontSize="12" />
-                                                                    <TextBlock Grid.Column="3"
-                                                                               Text="{Binding MaxDisplay}"
-                                                                               Margin="24 0 0 0"
-                                                                               HorizontalAlignment="Right"
-                                                                               FontFamily="Consolas, Cascadia Code, Courier New"
-                                                                               Foreground="{StaticResource ForegroundBrush}"
-                                                                               FontSize="12" />
-                                                                </Grid>
-                                                            </Border>
-                                                        </DataTemplate>
-                                                    </ListView.ItemTemplate>
-                                                </ListView>
-                                            </Grid>
-                                        </Border>
+                                                            <!-- Progress Bar & Range Row -->
+                                                            <Grid Margin="0,6,0,0">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <ProgressBar Grid.Column="0"
+                                                                             Value="{Binding ProgressPercent, Mode=OneWay}"
+                                                                             Maximum="100"
+                                                                             Height="4"
+                                                                             Margin="0,0,12,0"
+                                                                             VerticalAlignment="Center"
+                                                                             Background="#262626"
+                                                                             Foreground="#A7C47E"
+                                                                             BorderThickness="0">
+                                                                    <ProgressBar.Style>
+                                                                        <Style TargetType="ProgressBar">
+                                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding HasProgress}" Value="True">
+                                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </ProgressBar.Style>
+                                                                </ProgressBar>
+
+                                                                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                                                                    <TextBlock Text="Min: " Foreground="#666666" FontSize="11" FontFamily="Bahnschrift" />
+                                                                    <TextBlock Text="{Binding MinDisplay}" Foreground="{StaticResource MutedBrush}" FontSize="11" FontFamily="Consolas" Margin="0,0,8,0" />
+                                                                    <TextBlock Text="Max: " Foreground="#666666" FontSize="11" FontFamily="Bahnschrift" />
+                                                                    <TextBlock Text="{Binding MaxDisplay}" Foreground="{StaticResource MutedBrush}" FontSize="11" FontFamily="Consolas" />
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListView.ItemTemplate>
+                                        </ListView>
 
 
                                         <TextBlock Text="No sensors selected. Open Settings to choose sensors."
