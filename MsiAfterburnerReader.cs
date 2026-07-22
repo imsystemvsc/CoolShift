@@ -44,43 +44,49 @@ public static class MsiAfterburnerReader
                     break;
                 }
 
-                // Read szSrcName (260 bytes string)
+                // Read szSrcName (260 bytes string, properly truncated at first null)
                 byte[] nameBytes = new byte[260];
                 accessor.ReadArray(entryOffset, nameBytes, 0, 260);
-                string srcName = Encoding.ASCII.GetString(nameBytes).TrimEnd('\0');
+                int nullIdx = Array.IndexOf(nameBytes, (byte)0);
+                string srcName = nullIdx >= 0 ? Encoding.ASCII.GetString(nameBytes, 0, nullIdx) : Encoding.ASCII.GetString(nameBytes);
 
-                // Read szSrcUnits (260 bytes string)
+                // Read szSrcUnits (260 bytes string, properly truncated at first null)
                 byte[] unitBytes = new byte[260];
                 accessor.ReadArray(entryOffset + 260, unitBytes, 0, 260);
-                string srcUnits = Encoding.ASCII.GetString(unitBytes).TrimEnd('\0');
+                int unitNullIdx = Array.IndexOf(unitBytes, (byte)0);
+                string srcUnits = unitNullIdx >= 0 ? Encoding.ASCII.GetString(unitBytes, 0, unitNullIdx) : Encoding.ASCII.GetString(unitBytes);
 
-                // Read data (float at offset 1300 / 0x514 after 5x 260-byte string buffers)
+                // Read data (float at offset 1300 / 0x514)
                 float data = accessor.ReadSingle(entryOffset + 1300);
 
-                if (srcName.Contains("voltage", StringComparison.OrdinalIgnoreCase) ||
-                    srcName.Contains("VCore", StringComparison.OrdinalIgnoreCase) ||
-                    srcName.Contains("VDDC", StringComparison.OrdinalIgnoreCase) ||
-                    srcName.Contains("FBVDDC", StringComparison.OrdinalIgnoreCase))
+                // Read dwSrcId (uint at offset 1320 / 0x528)
+                uint srcId = accessor.ReadUInt32(entryOffset + 1320);
+
+                // Source ID 3 = GPU Voltage, Source ID 4 = GPU Voltage Aux
+                bool isVoltageSource = srcId == 3 || srcId == 4 || srcId == 5 ||
+                                       srcName.Contains("voltage", StringComparison.OrdinalIgnoreCase) ||
+                                       srcName.Contains("VCore", StringComparison.OrdinalIgnoreCase) ||
+                                       srcName.Contains("VDDC", StringComparison.OrdinalIgnoreCase) ||
+                                       srcName.Contains("FBVDDC", StringComparison.OrdinalIgnoreCase);
+
+                if (isVoltageSource && !srcName.Contains("CPU", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (!srcName.Contains("CPU", StringComparison.OrdinalIgnoreCase))
+                    double val = data;
+                    if (val > 10.0)
                     {
-                        double val = data;
-                        // MSI Afterburner can export voltage in mV (e.g. 950 mV) or V (e.g. 0.950 V)
-                        if (val > 10.0)
-                        {
-                            val /= 1000.0; // Convert mV to V
-                        }
-                        if (val > 0.1 && val < 3.0)
-                        {
-                            return val;
-                        }
+                        val /= 1000.0; // Convert mV to V
+                    }
+                    if (val > 0.1 && val < 3.0)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[MSI Afterburner] Matched GPU Voltage sensor '{srcName}' (ID: {srcId}): {val:F3} V");
+                        return val;
                     }
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Shared memory not found or MSI Afterburner not running
+            System.Diagnostics.Debug.WriteLine($"[MSI Afterburner] Shared memory reader error: {ex.Message}");
         }
 
         return null;
