@@ -589,7 +589,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             var snapshot = _cpuTemperatureService.GetSnapshot();
             PackageTempText = snapshot.PackageCelsius.HasValue ? $"{snapshot.PackageCelsius.Value:F1} \u00B0C" : "N/A";
             GpuTempText = snapshot.GpuCelsius.HasValue ? $"{snapshot.GpuCelsius.Value:F1} \u00B0C" : "N/A";
-            TrayToolTipText = $"Park Toggle\nCPU: {PackageTempText} | GPU: {GpuTempText}";
+            TrayToolTipText = $"CoolShift\nCPU: {PackageTempText} | GPU: {GpuTempText}";
 
             if (snapshot.CpuLoad.HasValue)
             {
@@ -667,7 +667,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             PackageTempText = "N/A";
             GpuTempText = "N/A";
-            TrayToolTipText = "Park Toggle";
+            TrayToolTipText = "CoolShift";
             TaskbarProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
         }
 
