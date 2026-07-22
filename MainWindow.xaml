@@ -767,18 +767,74 @@
                                 </Grid>
                             </Grid>
                             
-                            <!-- Historical Trend -->
+                            <!-- Live Hardware Sensor Telemetry Panel -->
                             <StackPanel Grid.Row="2" Margin="0,16,0,0">
-                                <TextBlock Text="HISTORICAL TREND (CPU TEMP - Last 2 Minutes)" FontFamily="Bahnschrift" Foreground="{StaticResource MutedBrush}" FontSize="12" />
-                                <lvc:CartesianChart
-                                    Series="{Binding ViewModel.TemperatureSeries}"
-                                    Height="110"
-                                    Margin="0,8,0,0"
-                                    Background="Transparent"
-                                    TooltipPosition="Top"
-                                    XAxes="{Binding ViewModel.EmptyAxes}"
-                                    YAxes="{Binding ViewModel.TempYAxes}">
-                                </lvc:CartesianChart>
+                                <TextBlock Text="LIVE HARDWARE SENSOR TELEMETRY" FontFamily="Bahnschrift" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="0,0,0,10" />
+                                
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    
+                                    <!-- CPU Telemetry Row -->
+                                    <Border Grid.Row="0" Background="#141417" BorderBrush="#333333" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- CPU Wattage -->
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="⚡ CPU POWER" FontFamily="Bahnschrift" FontSize="10" Foreground="{StaticResource MutedBrush}" />
+                                                <TextBlock Text="{Binding ViewModel.CpuPowerText, FallbackValue='24.5 W'}" FontFamily="Bahnschrift" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,2,0,0" />
+                                            </StackPanel>
+
+                                            <!-- CPU Clock -->
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="⏱️ CPU CLOCK" FontFamily="Bahnschrift" FontSize="10" Foreground="{StaticResource MutedBrush}" />
+                                                <TextBlock Text="{Binding ViewModel.CpuClockText, FallbackValue='4.35 GHz'}" FontFamily="Bahnschrift" FontSize="16" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,2,0,0" />
+                                            </StackPanel>
+
+                                            <!-- CPU Voltage -->
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="⚡ CPU VCORE" FontFamily="Bahnschrift" FontSize="10" Foreground="{StaticResource MutedBrush}" />
+                                                <TextBlock Text="{Binding ViewModel.CpuVoltageText, FallbackValue='1.18 V'}" FontFamily="Bahnschrift" FontSize="16" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- GPU Telemetry Row -->
+                                    <Border Grid.Row="1" Background="#141417" BorderBrush="#333333" BorderThickness="1" CornerRadius="8" Padding="12,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- GPU Wattage -->
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="⚡ GPU POWER" FontFamily="Bahnschrift" FontSize="10" Foreground="{StaticResource MutedBrush}" />
+                                                <TextBlock Text="{Binding ViewModel.GpuPowerText, FallbackValue='65.0 W'}" FontFamily="Bahnschrift" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,2,0,0" />
+                                            </StackPanel>
+
+                                            <!-- GPU Clock -->
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="⏱️ GPU CLOCK" FontFamily="Bahnschrift" FontSize="10" Foreground="{StaticResource MutedBrush}" />
+                                                <TextBlock Text="{Binding ViewModel.GpuClockText, FallbackValue='2100 MHz'}" FontFamily="Bahnschrift" FontSize="16" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,2,0,0" />
+                                            </StackPanel>
+
+                                            <!-- GPU Voltage -->
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="⚡ GPU VCORE" FontFamily="Bahnschrift" FontSize="10" Foreground="{StaticResource MutedBrush}" />
+                                                <TextBlock Text="{Binding ViewModel.GpuVoltageText, FallbackValue='1.05 V'}" FontFamily="Bahnschrift" FontSize="16" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
                             </StackPanel>
                         </Grid>
                 </Border>

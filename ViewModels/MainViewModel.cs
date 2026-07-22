@@ -115,6 +115,24 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private string _gpuTempText = "--";
 
     [ObservableProperty]
+    private string _cpuPowerText = "--";
+
+    [ObservableProperty]
+    private string _cpuClockText = "--";
+
+    [ObservableProperty]
+    private string _cpuVoltageText = "--";
+
+    [ObservableProperty]
+    private string _gpuPowerText = "--";
+
+    [ObservableProperty]
+    private string _gpuClockText = "--";
+
+    [ObservableProperty]
+    private string _gpuVoltageText = "--";
+
+    [ObservableProperty]
     private string _trayToolTipText = "Park Toggle";
 
     [ObservableProperty]
@@ -618,6 +636,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
             {
                 TaskbarProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
             }
+
+            CpuPowerText = snapshot.CpuPowerWatts.HasValue ? $"{snapshot.CpuPowerWatts.Value:F1} W" : "N/A";
+            CpuClockText = snapshot.CpuClockMhz.HasValue ? (snapshot.CpuClockMhz.Value >= 1000 ? $"{snapshot.CpuClockMhz.Value / 1000.0:F2} GHz" : $"{snapshot.CpuClockMhz.Value:F0} MHz") : "N/A";
+            CpuVoltageText = snapshot.CpuVoltageV.HasValue ? $"{snapshot.CpuVoltageV.Value:F3} V" : "N/A";
+
+            GpuPowerText = snapshot.GpuPowerWatts.HasValue ? $"{snapshot.GpuPowerWatts.Value:F1} W" : "N/A";
+            GpuClockText = snapshot.GpuClockMhz.HasValue ? $"{snapshot.GpuClockMhz.Value:F0} MHz" : "N/A";
+            GpuVoltageText = snapshot.GpuVoltageV.HasValue ? $"{snapshot.GpuVoltageV.Value:F3} V" : "N/A";
         }
         catch
         {

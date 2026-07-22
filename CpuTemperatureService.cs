@@ -17,6 +17,12 @@ internal sealed class CpuTemperatureService : IDisposable
     private List<ISensor> _coreSensors = new();
     private ISensor? _gpuSensor;
     private ISensor? _gpuLoadSensor;
+    private ISensor? _cpuPowerSensor;
+    private ISensor? _cpuClockSensor;
+    private ISensor? _cpuVoltageSensor;
+    private ISensor? _gpuPowerSensor;
+    private ISensor? _gpuClockSensor;
+    private ISensor? _gpuVoltageSensor;
     private bool _disposed;
 
     public CpuTemperatureService()
@@ -68,11 +74,22 @@ internal sealed class CpuTemperatureService : IDisposable
             double? cpuLoad = _cpuLoadSensor?.Value;
             double? gpu = _gpuSensor?.Value;
             double? gpuLoad = _gpuLoadSensor?.Value;
+            double? cpuPower = _cpuPowerSensor?.Value;
+            double? cpuClock = _cpuClockSensor?.Value;
+            double? cpuVoltage = _cpuVoltageSensor?.Value;
+            double? gpuPower = _gpuPowerSensor?.Value;
+            double? gpuClock = _gpuClockSensor?.Value;
+            double? gpuVoltage = _gpuVoltageSensor?.Value;
+
             var cores = _coreSensors
                 .Select((sensor, index) => new CoreTemperature(NormalizeCoreName(sensor.Name, index), sensor.Value))
                 .ToList();
 
-            return new CpuTemperatureSnapshot(package, cpuLoad, cores, gpu, gpuLoad);
+            return new CpuTemperatureSnapshot(
+                package, cpuLoad, cores, gpu, gpuLoad,
+                cpuPower, cpuClock, cpuVoltage,
+                gpuPower, gpuClock, gpuVoltage
+            );
         }
     }
 
@@ -105,6 +122,12 @@ internal sealed class CpuTemperatureService : IDisposable
         _coreSensors = new List<ISensor>();
         _gpuSensor = null;
         _gpuLoadSensor = null;
+        _cpuPowerSensor = null;
+        _cpuClockSensor = null;
+        _cpuVoltageSensor = null;
+        _gpuPowerSensor = null;
+        _gpuClockSensor = null;
+        _gpuVoltageSensor = null;
 
         foreach (var hardware in _computer.Hardware)
         {
@@ -119,56 +142,61 @@ internal sealed class CpuTemperatureService : IDisposable
             hardware.Accept(_visitor);
             hardware.Update();
 
-            var temperatureSensors = hardware.Sensors
-                .Where(static s => s.SensorType == SensorType.Temperature)
-                .ToList();
-                
-            var loadSensors = hardware.Sensors
-                .Where(static s => s.SensorType == SensorType.Load)
-                .ToList();
+            var tempSensors = hardware.Sensors.Where(static s => s.SensorType == SensorType.Temperature).ToList();
+            var loadSensors = hardware.Sensors.Where(static s => s.SensorType == SensorType.Load).ToList();
+            var powerSensors = hardware.Sensors.Where(static s => s.SensorType == SensorType.Power).ToList();
+            var clockSensors = hardware.Sensors.Where(static s => s.SensorType == SensorType.Clock).ToList();
+            var voltageSensors = hardware.Sensors.Where(static s => s.SensorType == SensorType.Voltage).ToList();
 
             if (hardware.HardwareType == HardwareType.Cpu)
             {
-                _packageSensor ??= FindPackageSensor(temperatureSensors);
+                _packageSensor ??= FindPackageSensor(tempSensors);
                 _cpuLoadSensor ??= FindCpuLoadSensor(loadSensors);
+                _cpuPowerSensor ??= FindPowerSensor(powerSensors);
+                _cpuClockSensor ??= FindClockSensor(clockSensors);
+                _cpuVoltageSensor ??= FindVoltageSensor(voltageSensors);
                 
                 if (_coreSensors.Count == 0)
                 {
-                    _coreSensors = FindCoreSensors(temperatureSensors);
-                }
-
-                if (_coreSensors.Count == 0 || _cpuLoadSensor is null)
-                {
-                    foreach (var subHardware in hardware.SubHardware)
-                    {
-                        subHardware.Accept(_visitor);
-                        subHardware.Update();
-
-                        var subTempSensors = subHardware.Sensors
-                            .Where(static s => s.SensorType == SensorType.Temperature)
-                            .ToList();
-                            
-                        var subLoadSensors = subHardware.Sensors
-                            .Where(static s => s.SensorType == SensorType.Load)
-                            .ToList();
-
-                        _packageSensor ??= FindPackageSensor(subTempSensors);
-                        _cpuLoadSensor ??= FindCpuLoadSensor(subLoadSensors);
-
-                        var subCores = FindCoreSensors(subTempSensors);
-                        if (subCores.Count > 0)
-                        {
-                            _coreSensors.AddRange(subCores);
-                        }
-                    }
+                    _coreSensors = FindCoreSensors(tempSensors);
                 }
             }
             else
             {
-                _gpuSensor ??= FindGpuSensor(temperatureSensors);
+                _gpuSensor ??= FindGpuSensor(tempSensors);
                 _gpuLoadSensor ??= FindGpuLoadSensor(loadSensors);
+                _gpuPowerSensor ??= FindPowerSensor(powerSensors);
+                _gpuClockSensor ??= FindClockSensor(clockSensors);
+                _gpuVoltageSensor ??= FindVoltageSensor(voltageSensors);
             }
         }
+    }
+
+    private static ISensor? FindPowerSensor(IEnumerable<ISensor> sensors)
+    {
+        return sensors.FirstOrDefault(static s => s.Name.Contains("Package", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("Total", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("CPU", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("GPU", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault();
+    }
+
+    private static ISensor? FindClockSensor(IEnumerable<ISensor> sensors)
+    {
+        return sensors.FirstOrDefault(static s => s.Name.Contains("Average", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("Core #1", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("GPU Core", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("Core", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault();
+    }
+
+    private static ISensor? FindVoltageSensor(IEnumerable<ISensor> sensors)
+    {
+        return sensors.FirstOrDefault(static s => s.Name.Contains("CPU Core", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("VCore", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("VID", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("GPU Core", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault();
     }
 
     private static ISensor? FindPackageSensor(IEnumerable<ISensor> sensors)
@@ -210,53 +238,27 @@ internal sealed class CpuTemperatureService : IDisposable
 
     private static bool IsCoreTemperatureSensor(ISensor sensor)
     {
-        if (sensor.SensorType != SensorType.Temperature)
-        {
-            return false;
-        }
-
+        if (sensor.SensorType != SensorType.Temperature) return false;
         var name = sensor.Name;
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return false;
-        }
-
-        if (name.Contains("Distance", StringComparison.OrdinalIgnoreCase)
-            || name.Contains("TjMax", StringComparison.OrdinalIgnoreCase)
-            || name.Contains("Average", StringComparison.OrdinalIgnoreCase)
-            || name.Contains("Max", StringComparison.OrdinalIgnoreCase)
-            || name.Contains("Min", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        if (!name.Contains("Core", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
+        if (string.IsNullOrWhiteSpace(name)) return false;
+        if (name.Contains("Distance", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("TjMax", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Average", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Max", StringComparison.OrdinalIgnoreCase) ||
+            name.Contains("Min", StringComparison.OrdinalIgnoreCase)) return false;
+        if (!name.Contains("Core", StringComparison.OrdinalIgnoreCase)) return false;
         return name.IndexOf('#') >= 0 || name.Any(char.IsDigit);
     }
-
 
     private static string NormalizeCoreName(string rawName, int index)
     {
         var baseName = $"Core {index + 1}";
-
-        if (string.IsNullOrWhiteSpace(rawName))
-        {
-            return baseName;
-        }
-
+        if (string.IsNullOrWhiteSpace(rawName)) return baseName;
         var trimmed = rawName.Trim();
-
-        if (trimmed.Contains("Distance", StringComparison.OrdinalIgnoreCase)
-            || trimmed.Contains("Average", StringComparison.OrdinalIgnoreCase)
-            || trimmed.Contains("Max", StringComparison.OrdinalIgnoreCase)
-            || trimmed.Contains("Min", StringComparison.OrdinalIgnoreCase))
-        {
-            return baseName;
-        }
+        if (trimmed.Contains("Distance", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Contains("Average", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Contains("Max", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Contains("Min", StringComparison.OrdinalIgnoreCase)) return baseName;
 
         string? details = null;
         var parenStart = trimmed.IndexOf('(');
@@ -318,7 +320,19 @@ internal sealed class CpuTemperatureService : IDisposable
 
 internal readonly record struct CoreTemperature(string Name, double? Celsius);
 
-internal readonly record struct CpuTemperatureSnapshot(double? PackageCelsius, double? CpuLoad, IReadOnlyList<CoreTemperature> Cores, double? GpuCelsius, double? GpuLoad)
+internal readonly record struct CpuTemperatureSnapshot(
+    double? PackageCelsius, 
+    double? CpuLoad, 
+    IReadOnlyList<CoreTemperature> Cores, 
+    double? GpuCelsius, 
+    double? GpuLoad,
+    double? CpuPowerWatts,
+    double? CpuClockMhz,
+    double? CpuVoltageV,
+    double? GpuPowerWatts,
+    double? GpuClockMhz,
+    double? GpuVoltageV
+)
 {
-    public static readonly CpuTemperatureSnapshot Empty = new(null, null, Array.Empty<CoreTemperature>(), null, null);
+    public static readonly CpuTemperatureSnapshot Empty = new(null, null, Array.Empty<CoreTemperature>(), null, null, null, null, null, null, null, null);
 }
