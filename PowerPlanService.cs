@@ -17,6 +17,13 @@ public enum ParkMode
     CoolIdle
 }
 
+public enum CoolIdleTier
+{
+    MaxCool,    // Min Cores: 0%, Idle State Max: 20, Max Perf State: 85%
+    Balanced,   // Min Cores: 0%, Idle State Max: 20, Max Perf State: 99% (Default)
+    Responsive  // Min Cores: 25%, Idle State Max: 10, Max Perf State: 100%
+}
+
 public sealed record PowerPlan(string Guid, string Name, bool IsActive)
 {
     public override string ToString() => Name;
@@ -150,21 +157,26 @@ public sealed class PowerPlanService
         return new ModeSnapshot(mode, core, idle);
     }
 
-    public async Task ToggleModeAsync(string planGuid, string planName, CancellationToken token = default)
+    public async Task ToggleModeAsync(string planGuid, string planName, CoolIdleTier tier = CoolIdleTier.Balanced, CancellationToken token = default)
     {
         var snapshot = await GetModeSnapshotAsync(planGuid, token).ConfigureAwait(false);
         var target = snapshot.Mode == ParkMode.CoolIdle ? ParkMode.AlwaysOn : ParkMode.CoolIdle;
-        await SetModeAsync(planGuid, planName, target, token).ConfigureAwait(false);
+        await SetModeAsync(planGuid, planName, target, tier, token).ConfigureAwait(false);
     }
 
-    public async Task SetModeAsync(string planGuid, string planName, ParkMode mode, CancellationToken token = default)
+    public async Task SetModeAsync(string planGuid, string planName, ParkMode mode, CoolIdleTier tier = CoolIdleTier.Balanced, CancellationToken token = default)
     {
         await EnsureCpuParkingSettingsVisibleAsync(token).ConfigureAwait(false);
 
         var cleanPlan = planGuid.Trim().Trim('{', '}');
         var (coreValues, idleValues, maxPerfValues) = mode switch
         {
-            ParkMode.CoolIdle => (new PowerSettingValues(0, 0), new PowerSettingValues(20, 20), new PowerSettingValues(99, 99)),
+            ParkMode.CoolIdle => tier switch
+            {
+                CoolIdleTier.MaxCool => (new PowerSettingValues(0, 0), new PowerSettingValues(20, 20), new PowerSettingValues(85, 85)),
+                CoolIdleTier.Responsive => (new PowerSettingValues(25, 25), new PowerSettingValues(10, 10), new PowerSettingValues(100, 100)),
+                _ => (new PowerSettingValues(0, 0), new PowerSettingValues(20, 20), new PowerSettingValues(99, 99)) // Balanced
+            },
             ParkMode.AlwaysOn => (new PowerSettingValues(100, 100), new PowerSettingValues(0, 0), new PowerSettingValues(100, 100)),
             _ => throw new ArgumentException("Mode must be CoolIdle or AlwaysOn.", nameof(mode)),
         };
@@ -176,8 +188,16 @@ public sealed class PowerPlanService
         var activateResult = await RunPowerCfgAsync($"-S {cleanPlan}", token).ConfigureAwait(false);
         EnsureSuccess(activateResult, $"powercfg -S {cleanPlan}");
 
-        Log($"Switched to {ModeToDisplay(mode)} ({planName})");
+        var modeLabel = mode == ParkMode.CoolIdle ? $"{ModeToDisplay(mode)} [{TierToDisplay(tier)}]" : ModeToDisplay(mode);
+        Log($"Switched to {modeLabel} ({planName})");
     }
+
+    public static string TierToDisplay(CoolIdleTier tier) => tier switch
+    {
+        CoolIdleTier.MaxCool => "Max Cool (85%)",
+        CoolIdleTier.Responsive => "Responsive (100%)",
+        _ => "Balanced (99%)"
+    };
 
     public async Task SetActivePlanAsync(string planGuid, string planName, CancellationToken token = default)
     {

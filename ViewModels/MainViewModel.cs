@@ -90,6 +90,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private ParkMode _currentMode;
 
     [ObservableProperty]
+    private CoolIdleTier _selectedCoolIdleTier = CoolIdleTier.Balanced;
+
+    [ObservableProperty]
     private string _trayIconSource = "pack://application:,,,/Resources/Icons/main.ico";
 
     partial void OnCurrentModeChanged(ParkMode value)
@@ -315,6 +318,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
         // Load settings before starting automation
         AutomationSettings = AutomationSettingsManager.Load();
+        SelectedCoolIdleTier = AutomationSettings.SelectedCoolIdleTier;
 
         _automationService = new AutomationService(_powerPlanService, AutomationSettings);
         _automationService.AutomationTriggered += (s, msg) => 
@@ -470,13 +474,44 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    public async Task SelectCoolIdleTierAsync(string tierName)
+    {
+        if (!Enum.TryParse<CoolIdleTier>(tierName, true, out var tier)) return;
+        SelectedCoolIdleTier = tier;
+
+        var newSettings = new AutomationOptions
+        {
+            SmartBatteryEnabled = AutomationSettings.SmartBatteryEnabled,
+            TargetExecutables = AutomationSettings.TargetExecutables.ToList(),
+            SelectedCoolIdleTier = tier
+        };
+        AutomationSettings = newSettings;
+        AutomationSettingsManager.Save(AutomationSettings);
+
+        if (CurrentMode == ParkMode.CoolIdle && SelectedPlan != null && !IsBusy)
+        {
+            IsBusy = true;
+            try
+            {
+                await _powerPlanService.SetModeAsync(SelectedPlan.Guid, SelectedPlan.Name, ParkMode.CoolIdle, SelectedCoolIdleTier);
+                var snapshot = await _powerPlanService.GetModeSnapshotAsync(SelectedPlan.Guid);
+                UpdateModeDetails(snapshot);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+    }
+
+    [RelayCommand]
     public async Task ToggleModeAsync()
     {
         if (SelectedPlan == null || IsBusy) return;
         IsBusy = true;
         try
         {
-            await _powerPlanService.ToggleModeAsync(SelectedPlan.Guid, SelectedPlan.Name);
+            await _powerPlanService.ToggleModeAsync(SelectedPlan.Guid, SelectedPlan.Name, SelectedCoolIdleTier);
             var snapshot = await _powerPlanService.GetModeSnapshotAsync(SelectedPlan.Guid);
             UpdateModeDetails(snapshot);
         }

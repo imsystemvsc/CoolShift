@@ -584,7 +584,89 @@
                             </Button.Style>
                         </Button>
                         
-                        
+                        <!-- Cool Idle Intensity Segmented Pill Selector -->
+                        <Border Margin="0,4,0,14" Background="#141417" BorderBrush="#333333" BorderThickness="1" CornerRadius="8" Padding="6">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                
+                                <TextBlock Grid.Row="0" Text="COOL IDLE PRESET TIER" FontFamily="Bahnschrift" Foreground="{StaticResource MutedBrush}" FontSize="11" FontWeight="SemiBold" Margin="4,2,0,6" />
+                                
+                                <Grid Grid.Row="1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Pill 1: Max Cool -->
+                                    <Button Grid.Column="0"
+                                            Command="{Binding ViewModel.SelectCoolIdleTierCommand}"
+                                            CommandParameter="MaxCool"
+                                            Margin="1" Padding="4,6" Cursor="Hand">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                <Setter Property="FontSize" Value="11" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                                <Setter Property="Content" Value="❄️ Max (85%)" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ViewModel.SelectedCoolIdleTier}" Value="MaxCool">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                                                        <Setter Property="Foreground" Value="#121217" />
+                                                        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+
+                                    <!-- Pill 2: Balanced -->
+                                    <Button Grid.Column="1"
+                                            Command="{Binding ViewModel.SelectCoolIdleTierCommand}"
+                                            CommandParameter="Balanced"
+                                            Margin="1" Padding="4,6" Cursor="Hand">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                <Setter Property="FontSize" Value="11" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                                <Setter Property="Content" Value="🌿 Bal (99%)" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ViewModel.SelectedCoolIdleTier}" Value="Balanced">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                                                        <Setter Property="Foreground" Value="#121217" />
+                                                        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+
+                                    <!-- Pill 3: Responsive -->
+                                    <Button Grid.Column="2"
+                                            Command="{Binding ViewModel.SelectCoolIdleTierCommand}"
+                                            CommandParameter="Responsive"
+                                            Margin="1" Padding="4,6" Cursor="Hand">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+                                                <Setter Property="FontSize" Value="11" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                                <Setter Property="Content" Value="⚡ Resp (100%)" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding ViewModel.SelectedCoolIdleTier}" Value="Responsive">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+                                                        <Setter Property="Foreground" Value="#121217" />
+                                                        <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />

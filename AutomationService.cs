@@ -13,6 +13,7 @@ public class AutomationOptions
 {
     public bool SmartBatteryEnabled { get; set; } = true;
     public List<string> TargetExecutables { get; set; } = new();
+    public CoolIdleTier SelectedCoolIdleTier { get; set; } = CoolIdleTier.Balanced;
 }
 
 public class AutomationService : IAsyncDisposable, IDisposable
@@ -96,10 +97,10 @@ public class AutomationService : IAsyncDisposable, IDisposable
             var snapshot = await _powerPlanService.GetModeSnapshotAsync(BasePlanGuid, token);
             if (snapshot.Mode != ParkMode.CoolIdle)
             {
-                await _powerPlanService.SetModeAsync(BasePlanGuid, "Battery Auto-Switch", ParkMode.CoolIdle, token);
+                await _powerPlanService.SetModeAsync(BasePlanGuid, "Battery Auto-Switch", ParkMode.CoolIdle, _options.SelectedCoolIdleTier, token);
                 ActiveTargetName = "Battery Saver";
-                AutomationTriggered?.Invoke(this, "Switched to Cool Idle (Battery Detected)");
-                _powerPlanService.Log("Automation triggered: Switched to Cool Idle (Battery Detected)");
+                AutomationTriggered?.Invoke(this, $"Switched to Cool Idle [{PowerPlanService.TierToDisplay(_options.SelectedCoolIdleTier)}] (Battery Detected)");
+                _powerPlanService.Log($"Automation triggered: Switched to Cool Idle [{PowerPlanService.TierToDisplay(_options.SelectedCoolIdleTier)}] (Battery Detected)");
                 _wasRunningTargetProcess = false; // Reset state
             }
             return;
@@ -114,7 +115,7 @@ public class AutomationService : IAsyncDisposable, IDisposable
             var snapshot = await _powerPlanService.GetModeSnapshotAsync(BasePlanGuid, token);
             if (snapshot.Mode != ParkMode.AlwaysOn)
             {
-                await _powerPlanService.SetModeAsync(BasePlanGuid, "Game Auto-Switch", ParkMode.AlwaysOn, token);
+                await _powerPlanService.SetModeAsync(BasePlanGuid, "Game Auto-Switch", ParkMode.AlwaysOn, _options.SelectedCoolIdleTier, token);
                 AutomationTriggered?.Invoke(this, $"Switched to Always-On (Detected: {ActiveTargetName})");
                 _powerPlanService.Log($"Automation triggered: Switched to Always-On (Detected: {ActiveTargetName})");
             }
@@ -126,9 +127,9 @@ public class AutomationService : IAsyncDisposable, IDisposable
             var snapshot = await _powerPlanService.GetModeSnapshotAsync(BasePlanGuid, token);
             if (snapshot.Mode != ParkMode.CoolIdle)
             {
-                await _powerPlanService.SetModeAsync(BasePlanGuid, "Game Auto-Switch", ParkMode.CoolIdle, token);
-                AutomationTriggered?.Invoke(this, "Switched to Cool Idle (Game Closed)");
-                _powerPlanService.Log("Automation triggered: Switched to Cool Idle (Game Closed)");
+                await _powerPlanService.SetModeAsync(BasePlanGuid, "Game Auto-Switch", ParkMode.CoolIdle, _options.SelectedCoolIdleTier, token);
+                AutomationTriggered?.Invoke(this, $"Switched to Cool Idle [{PowerPlanService.TierToDisplay(_options.SelectedCoolIdleTier)}] (Game Closed)");
+                _powerPlanService.Log($"Automation triggered: Switched to Cool Idle [{PowerPlanService.TierToDisplay(_options.SelectedCoolIdleTier)}] (Game Closed)");
             }
             ActiveTargetName = null;
             _wasRunningTargetProcess = false;
