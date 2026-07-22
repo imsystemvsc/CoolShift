@@ -54,14 +54,14 @@ public static class MsiAfterburnerReader
                 accessor.ReadArray(entryOffset + 260, unitBytes, 0, 260);
                 string srcUnits = Encoding.ASCII.GetString(unitBytes).TrimEnd('\0');
 
-                // Read data (float at offset + 520 / 0x208)
-                float data = accessor.ReadSingle(entryOffset + 520);
+                // Read data (float at offset 1300 / 0x514 after 5x 260-byte string buffers)
+                float data = accessor.ReadSingle(entryOffset + 1300);
 
                 if (srcName.Contains("voltage", StringComparison.OrdinalIgnoreCase) ||
                     srcName.Contains("VCore", StringComparison.OrdinalIgnoreCase) ||
-                    srcName.Contains("VDDC", StringComparison.OrdinalIgnoreCase))
+                    srcName.Contains("VDDC", StringComparison.OrdinalIgnoreCase) ||
+                    srcName.Contains("FBVDDC", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Check if it's GPU voltage (and not CPU voltage)
                     if (!srcName.Contains("CPU", StringComparison.OrdinalIgnoreCase))
                     {
                         double val = data;
