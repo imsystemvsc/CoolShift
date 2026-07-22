@@ -161,7 +161,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public string LogPath => _powerPlanService.LogPath;
 
-    private const string AppName = "ParkToggle";
+    private const string AppName = "CoolShift";
+    private const string LegacyAppName = "ParkToggle";
     private string _cpuLoadText = "0%";
     public string CpuLoadText
     {
@@ -184,6 +185,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             try
             {
+                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, false))
+                {
+                    if (key?.GetValue(AppName) != null) return true;
+                }
+
                 var psi = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "schtasks",
@@ -204,46 +210,44 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             try
             {
-                // Clean up old registry key just in case
                 using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true))
                 {
-                    if (key?.GetValue(AppName) != null)
+                    if (key?.GetValue(LegacyAppName) != null)
                     {
-                        key.DeleteValue(AppName, false);
+                        key.DeleteValue(LegacyAppName, false);
                     }
+                }
+                DeleteSchTask(LegacyAppName);
+
+                var exePath = Environment.ProcessPath;
+                if (exePath != null && exePath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                {
+                    exePath = exePath.Substring(0, exePath.Length - 4) + ".exe";
                 }
 
                 if (value)
                 {
-                    var exePath = Environment.ProcessPath;
-                    if (exePath != null && exePath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                    using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true))
                     {
-                        exePath = exePath.Substring(0, exePath.Length - 4) + ".exe";
+                        if (key != null && !string.IsNullOrEmpty(exePath))
+                        {
+                            key.SetValue(AppName, $"\"{exePath}\" --hidden");
+                        }
                     }
 
-                    var arguments = $"/create /tn \"{AppName}\" /tr \"\\\"{exePath}\\\" --hidden\" /sc onlogon /rl highest /f";
-                    var psi = new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "schtasks",
-                        Arguments = arguments,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
-                    using var process = System.Diagnostics.Process.Start(psi);
-                    process?.WaitForExit();
+                    CreateSchTask(AppName, exePath);
                 }
                 else
                 {
-                    var arguments = $"/delete /tn \"{AppName}\" /f";
-                    var psi = new System.Diagnostics.ProcessStartInfo
+                    using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true))
                     {
-                        FileName = "schtasks",
-                        Arguments = arguments,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
-                    using var process = System.Diagnostics.Process.Start(psi);
-                    process?.WaitForExit();
+                        if (key?.GetValue(AppName) != null)
+                        {
+                            key.DeleteValue(AppName, false);
+                        }
+                    }
+
+                    DeleteSchTask(AppName);
                 }
                 
                 OnPropertyChanged(nameof(StartWithWindows));
@@ -253,6 +257,43 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 System.Diagnostics.Trace.WriteLine($"Failed to set StartWithWindows: {ex.Message}");
             }
         }
+    }
+
+    private static void CreateSchTask(string appName, string? exePath)
+    {
+        if (string.IsNullOrEmpty(exePath)) return;
+        try
+        {
+            var arguments = $"/create /tn \"{appName}\" /tr \"\\\"{exePath}\\\" --hidden\" /sc onlogon /rl highest /f";
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "schtasks",
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var process = System.Diagnostics.Process.Start(psi);
+            process?.WaitForExit();
+        }
+        catch { }
+    }
+
+    private static void DeleteSchTask(string appName)
+    {
+        try
+        {
+            var arguments = $"/delete /tn \"{appName}\" /f";
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "schtasks",
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var process = System.Diagnostics.Process.Start(psi);
+            process?.WaitForExit();
+        }
+        catch { }
     }
 
     public MainViewModel()
