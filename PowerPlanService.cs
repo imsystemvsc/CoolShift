@@ -29,8 +29,14 @@ public sealed class PowerPlanService
     private const string LogFileName = "ParkToggle.log";
 
     private static readonly Guid SubProcessorGuid = new("54533251-82be-4824-96c1-47b60b740d00");
+    private static readonly Guid SubPcieGuid = new("501a4d13-42af-4429-9fd1-a8218c268e20");
     private static readonly Guid CoreGuid = new("0cc5b647-c1df-4637-891a-dec35c318583");
     private static readonly Guid IdleGuid = new("9943e905-9a30-4ec1-9b99-44dd3b76f7a2");
+    private static readonly Guid PerfBoostGuid = new("be337238-0d82-4146-8160-464077d46496");
+    private static readonly Guid MaxPerfStateGuid = new("bc5038f7-a970-4101-b7e0-0b303dbb81da");
+    private static readonly Guid PerfIncreaseThresholdGuid = new("0658844d-107e-4887-8a0d-3b7c77358430");
+    private static readonly Guid PcieAspmGuid = new("2a737441-1930-4402-8d77-b08be5c1ffff");
+    private static readonly Guid SchedulingPolicyGuid = new("93b8fe0d-056a-4be7-966e-322d4f228108");
     private static readonly string VisibilityMarkerPath = ResolveVisibilityMarkerPath();
     private static readonly TimeSpan VisibilityMarkerTtl = TimeSpan.FromDays(7); // periodic refresh in case Windows hides settings again
     private static readonly SemaphoreSlim SettingVisibilityLock = new(1, 1);
@@ -168,8 +174,26 @@ public sealed class PowerPlanService
             _ => throw new ArgumentException("Mode must be CoolIdle or AlwaysOn.", nameof(mode)),
         };
 
-        await SetSettingValuesAsync(cleanPlan, CoreGuid, coreValues, token).ConfigureAwait(false);
-        await SetSettingValuesAsync(cleanPlan, IdleGuid, idleValues, token).ConfigureAwait(false);
+        await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", CoreGuid, coreValues, token).ConfigureAwait(false);
+        await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", IdleGuid, idleValues, token).ConfigureAwait(false);
+
+        // Extended power & thermal tuning settings
+        if (mode == ParkMode.CoolIdle)
+        {
+            await TrySetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", PerfBoostGuid, new PowerSettingValues(0, 0), token).ConfigureAwait(false); // Disable Boost
+            await TrySetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", MaxPerfStateGuid, new PowerSettingValues(99, 99), token).ConfigureAwait(false); // 99% Max Perf
+            await TrySetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", PerfIncreaseThresholdGuid, new PowerSettingValues(80, 80), token).ConfigureAwait(false); // 80% Increase Threshold
+            await TrySetSettingValuesAsync(cleanPlan, "SUB_PCIEXPRESS", PcieAspmGuid, new PowerSettingValues(2, 2), token).ConfigureAwait(false); // Max PCIe ASPM Savings
+            await TrySetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", SchedulingPolicyGuid, new PowerSettingValues(2, 2), token).ConfigureAwait(false); // Prefer E-Cores
+        }
+        else if (mode == ParkMode.AlwaysOn)
+        {
+            await TrySetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", PerfBoostGuid, new PowerSettingValues(3, 3), token).ConfigureAwait(false); // Aggressive Boost
+            await TrySetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", MaxPerfStateGuid, new PowerSettingValues(100, 100), token).ConfigureAwait(false); // 100% Max Perf
+            await TrySetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", PerfIncreaseThresholdGuid, new PowerSettingValues(30, 30), token).ConfigureAwait(false); // 30% Increase Threshold
+            await TrySetSettingValuesAsync(cleanPlan, "SUB_PCIEXPRESS", PcieAspmGuid, new PowerSettingValues(0, 0), token).ConfigureAwait(false); // PCIe Off
+            await TrySetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", SchedulingPolicyGuid, new PowerSettingValues(0, 0), token).ConfigureAwait(false); // All Cores
+        }
 
         var activateResult = await RunPowerCfgAsync($"-S {cleanPlan}", token).ConfigureAwait(false);
         EnsureSuccess(activateResult, $"powercfg -S {cleanPlan}");
@@ -242,6 +266,11 @@ public sealed class PowerPlanService
 
             var coreResult = await RunPowerCfgAsync($"/attributes {SubProcessorGuid:D} {CoreGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
             var idleResult = await RunPowerCfgAsync($"/attributes {SubProcessorGuid:D} {IdleGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
+            await RunPowerCfgAsync($"/attributes {SubProcessorGuid:D} {PerfBoostGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
+            await RunPowerCfgAsync($"/attributes {SubProcessorGuid:D} {MaxPerfStateGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
+            await RunPowerCfgAsync($"/attributes {SubProcessorGuid:D} {PerfIncreaseThresholdGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
+            await RunPowerCfgAsync($"/attributes {SubPcieGuid:D} {PcieAspmGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
+            await RunPowerCfgAsync($"/attributes {SubProcessorGuid:D} {SchedulingPolicyGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
 
             LogVisibilityFailure(CoreGuid, coreResult);
             LogVisibilityFailure(IdleGuid, idleResult);
@@ -476,14 +505,26 @@ public sealed class PowerPlanService
         return failures.Count == 0 ? null : string.Join("; ", failures);
     }
 
-    private async Task SetSettingValuesAsync(string planGuid, Guid settingGuid, PowerSettingValues values, CancellationToken token)
+    private async Task SetSettingValuesAsync(string planGuid, string subGroup, Guid settingGuid, PowerSettingValues values, CancellationToken token)
     {
         var guidString = settingGuid.ToString("D");
-        var acResult = await RunPowerCfgAsync($"/setacvalueindex {planGuid} SUB_PROCESSOR {guidString} {values.Ac}", token).ConfigureAwait(false);
+        var acResult = await RunPowerCfgAsync($"/setacvalueindex {planGuid} {subGroup} {guidString} {values.Ac}", token).ConfigureAwait(false);
         EnsureSuccess(acResult, $"powercfg /setacvalueindex {guidString}");
 
-        var dcResult = await RunPowerCfgAsync($"/setdcvalueindex {planGuid} SUB_PROCESSOR {guidString} {values.Dc}", token).ConfigureAwait(false);
+        var dcResult = await RunPowerCfgAsync($"/setdcvalueindex {planGuid} {subGroup} {guidString} {values.Dc}", token).ConfigureAwait(false);
         EnsureSuccess(dcResult, $"powercfg /setdcvalueindex {guidString}");
+    }
+
+    private async Task TrySetSettingValuesAsync(string planGuid, string subGroup, Guid settingGuid, PowerSettingValues values, CancellationToken token)
+    {
+        try
+        {
+            await SetSettingValuesAsync(planGuid, subGroup, settingGuid, values, token).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log($"Optional power setting {settingGuid:D} could not be set: {ex.Message}", "WARN");
+        }
     }
 
     private static Encoding ResolveConsoleEncoding()
