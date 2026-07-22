@@ -154,7 +154,7 @@ internal sealed class CpuTemperatureService : IDisposable
                 _cpuLoadSensor ??= FindCpuLoadSensor(loadSensors);
                 _cpuPowerSensor ??= FindPowerSensor(powerSensors);
                 _cpuClockSensor ??= FindClockSensor(clockSensors);
-                _cpuVoltageSensor ??= FindVoltageSensor(voltageSensors);
+                _cpuVoltageSensor ??= FindCpuVoltageSensor(voltageSensors);
                 
                 if (_coreSensors.Count == 0)
                 {
@@ -167,7 +167,7 @@ internal sealed class CpuTemperatureService : IDisposable
                 _gpuLoadSensor ??= FindGpuLoadSensor(loadSensors);
                 _gpuPowerSensor ??= FindPowerSensor(powerSensors);
                 _gpuClockSensor ??= FindClockSensor(clockSensors);
-                _gpuVoltageSensor ??= FindVoltageSensor(voltageSensors);
+                _gpuVoltageSensor ??= FindGpuVoltageSensor(voltageSensors);
             }
         }
     }
@@ -190,12 +190,20 @@ internal sealed class CpuTemperatureService : IDisposable
                ?? sensors.FirstOrDefault();
     }
 
-    private static ISensor? FindVoltageSensor(IEnumerable<ISensor> sensors)
+    private static ISensor? FindCpuVoltageSensor(IEnumerable<ISensor> sensors)
     {
         return sensors.FirstOrDefault(static s => s.Name.Contains("CPU Core", StringComparison.OrdinalIgnoreCase))
                ?? sensors.FirstOrDefault(static s => s.Name.Contains("VCore", StringComparison.OrdinalIgnoreCase))
                ?? sensors.FirstOrDefault(static s => s.Name.Contains("VID", StringComparison.OrdinalIgnoreCase))
-               ?? sensors.FirstOrDefault(static s => s.Name.Contains("GPU Core", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault();
+    }
+
+    private static ISensor? FindGpuVoltageSensor(IEnumerable<ISensor> sensors)
+    {
+        return sensors.FirstOrDefault(static s => s.Name.Contains("GPU Core", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("GPU Voltage", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("VDDC", StringComparison.OrdinalIgnoreCase))
+               ?? sensors.FirstOrDefault(static s => s.Name.Contains("GPU", StringComparison.OrdinalIgnoreCase))
                ?? sensors.FirstOrDefault();
     }
 

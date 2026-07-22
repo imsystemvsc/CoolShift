@@ -133,6 +133,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private string _gpuVoltageText = "--";
 
     [ObservableProperty]
+    private string _gpuVoltageLabel = "⚡ GPU VCORE";
+
+    [ObservableProperty]
     private string _trayToolTipText = "Park Toggle";
 
     [ObservableProperty]
@@ -643,7 +646,22 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             GpuPowerText = snapshot.GpuPowerWatts.HasValue ? $"{snapshot.GpuPowerWatts.Value:F1} W" : "N/A";
             GpuClockText = snapshot.GpuClockMhz.HasValue ? $"{snapshot.GpuClockMhz.Value:F0} MHz" : "N/A";
-            GpuVoltageText = snapshot.GpuVoltageV.HasValue ? $"{snapshot.GpuVoltageV.Value:F3} V" : "N/A";
+            
+            if (snapshot.GpuVoltageV.HasValue)
+            {
+                GpuVoltageLabel = "⚡ GPU VCORE";
+                GpuVoltageText = $"{snapshot.GpuVoltageV.Value:F3} V";
+            }
+            else if (snapshot.GpuCelsius.HasValue)
+            {
+                GpuVoltageLabel = "🌡️ GPU TEMP";
+                GpuVoltageText = $"{snapshot.GpuCelsius.Value:F1} °C";
+            }
+            else
+            {
+                GpuVoltageLabel = "⚡ GPU VCORE";
+                GpuVoltageText = "N/A";
+            }
         }
         catch
         {

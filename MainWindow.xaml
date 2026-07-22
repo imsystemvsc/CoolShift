@@ -827,9 +827,9 @@
                                                 <TextBlock Text="{Binding ViewModel.GpuClockText, FallbackValue='2100 MHz'}" FontFamily="Bahnschrift" FontSize="16" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,2,0,0" />
                                             </StackPanel>
 
-                                            <!-- GPU Voltage -->
+                                            <!-- GPU Voltage / Temp -->
                                             <StackPanel Grid.Column="2">
-                                                <TextBlock Text="⚡ GPU VCORE" FontFamily="Bahnschrift" FontSize="10" Foreground="{StaticResource MutedBrush}" />
+                                                <TextBlock Text="{Binding ViewModel.GpuVoltageLabel, FallbackValue='⚡ GPU VCORE'}" FontFamily="Bahnschrift" FontSize="10" Foreground="{StaticResource MutedBrush}" />
                                                 <TextBlock Text="{Binding ViewModel.GpuVoltageText, FallbackValue='1.05 V'}" FontFamily="Bahnschrift" FontSize="16" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,2,0,0" />
                                             </StackPanel>
                                         </Grid>
