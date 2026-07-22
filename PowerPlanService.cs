@@ -39,6 +39,8 @@ public sealed class PowerPlanService
     private static readonly Guid CoreGuid = new("0cc5b647-c1df-4637-891a-dec35c318583");
     private static readonly Guid IdleGuid = new("9943e905-9a30-4ec1-9b99-44dd3b76f7a2");
     private static readonly Guid MaxPerfStateGuid = new("bc5038f7-23e0-4960-96da-33abaf5935ec");
+    private static readonly Guid PerfIncTimeGuid = new("984cf492-3bed-4488-a8f9-4286c97bf5aa");
+    private static readonly Guid CpIncreasePolGuid = new("c7be0679-2817-4d69-9d02-519a537ed0c6");
     private static readonly string VisibilityMarkerPath = ResolveVisibilityMarkerPath();
     private static readonly TimeSpan VisibilityMarkerTtl = TimeSpan.FromDays(7); // periodic refresh in case Windows hides settings again
     private static readonly SemaphoreSlim SettingVisibilityLock = new(1, 1);
@@ -169,21 +171,47 @@ public sealed class PowerPlanService
         await EnsureCpuParkingSettingsVisibleAsync(token).ConfigureAwait(false);
 
         var cleanPlan = planGuid.Trim().Trim('{', '}');
-        var (coreValues, idleValues, maxPerfValues) = mode switch
+        var (coreValues, idleValues, maxPerfValues, perfIncTimeValues, cpIncreasePolValues) = mode switch
         {
             ParkMode.CoolIdle => tier switch
             {
-                CoolIdleTier.MaxCool => (new PowerSettingValues(0, 0), new PowerSettingValues(20, 20), new PowerSettingValues(85, 85)),
-                CoolIdleTier.Responsive => (new PowerSettingValues(25, 25), new PowerSettingValues(10, 10), new PowerSettingValues(100, 100)),
-                _ => (new PowerSettingValues(0, 0), new PowerSettingValues(20, 20), new PowerSettingValues(99, 99)) // Balanced
+                CoolIdleTier.MaxCool => (
+                    new PowerSettingValues(0, 0),
+                    new PowerSettingValues(20, 20),
+                    new PowerSettingValues(85, 85),
+                    new PowerSettingValues(5, 5),   // Delay unparking (5 time check intervals)
+                    new PowerSettingValues(1, 1)    // Single core unpark policy
+                ),
+                CoolIdleTier.Responsive => (
+                    new PowerSettingValues(25, 25),
+                    new PowerSettingValues(10, 10),
+                    new PowerSettingValues(100, 100),
+                    new PowerSettingValues(1, 1),
+                    new PowerSettingValues(0, 0)
+                ),
+                _ => ( // Balanced
+                    new PowerSettingValues(0, 0),
+                    new PowerSettingValues(20, 20),
+                    new PowerSettingValues(99, 99),
+                    new PowerSettingValues(3, 3),   // Moderate unpark delay
+                    new PowerSettingValues(1, 1)    // Single core unpark policy
+                )
             },
-            ParkMode.AlwaysOn => (new PowerSettingValues(100, 100), new PowerSettingValues(0, 0), new PowerSettingValues(100, 100)),
+            ParkMode.AlwaysOn => (
+                new PowerSettingValues(100, 100),
+                new PowerSettingValues(0, 0),
+                new PowerSettingValues(100, 100),
+                new PowerSettingValues(1, 1),
+                new PowerSettingValues(0, 0)
+            ),
             _ => throw new ArgumentException("Mode must be CoolIdle or AlwaysOn.", nameof(mode)),
         };
 
         await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", CoreGuid, coreValues, token).ConfigureAwait(false);
         await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", IdleGuid, idleValues, token).ConfigureAwait(false);
         await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", MaxPerfStateGuid, maxPerfValues, token).ConfigureAwait(false);
+        await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", PerfIncTimeGuid, perfIncTimeValues, token).ConfigureAwait(false);
+        await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", CpIncreasePolGuid, cpIncreasePolValues, token).ConfigureAwait(false);
 
         var activateResult = await RunPowerCfgAsync($"-S {cleanPlan}", token).ConfigureAwait(false);
         EnsureSuccess(activateResult, $"powercfg -S {cleanPlan}");
@@ -265,6 +293,8 @@ public sealed class PowerPlanService
             var coreResult = await RunPowerCfgAsync($"/attributes {SubProcessorGuid:D} {CoreGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
             var idleResult = await RunPowerCfgAsync($"/attributes {SubProcessorGuid:D} {IdleGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
             await RunPowerCfgAsync($"/attributes {SubProcessorGuid:D} {MaxPerfStateGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
+            await RunPowerCfgAsync($"/attributes {SubProcessorGuid:D} {PerfIncTimeGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
+            await RunPowerCfgAsync($"/attributes {SubProcessorGuid:D} {CpIncreasePolGuid:D} -ATTRIB_HIDE", token).ConfigureAwait(false);
 
             LogVisibilityFailure(CoreGuid, coreResult);
             LogVisibilityFailure(IdleGuid, idleResult);
