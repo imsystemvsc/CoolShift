@@ -33,7 +33,7 @@ public sealed class PowerPlanService
     private static readonly Guid CoreGuid = new("0cc5b647-c1df-4637-891a-dec35c318583");
     private static readonly Guid IdleGuid = new("9943e905-9a30-4ec1-9b99-44dd3b76f7a2");
     private static readonly Guid PerfBoostGuid = new("be337238-0d82-4146-8160-464077d46496");
-    private static readonly Guid MaxPerfStateGuid = new("bc5038f7-a970-4101-b7e0-0b303dbb81da");
+    private static readonly Guid MaxPerfStateGuid = new("bc5038f7-23e0-4960-96da-33abaf5935ec");
     private static readonly Guid PerfIncreaseThresholdGuid = new("0658844d-107e-4887-8a0d-3b7c77358430");
     private static readonly Guid PcieAspmGuid = new("2a737441-1930-4402-8d77-b08be5c1ffff");
     private static readonly Guid SchedulingPolicyGuid = new("93b8fe0d-056a-4be7-966e-322d4f228108");
@@ -505,6 +505,16 @@ public sealed class PowerPlanService
         return failures.Count == 0 ? null : string.Join("; ", failures);
     }
 
+    private async Task<bool> SetSettingValuesInternalAsync(string planGuid, string subGroup, Guid settingGuid, PowerSettingValues values, CancellationToken token)
+    {
+        var guidString = settingGuid.ToString("D");
+        var acResult = await RunPowerCfgAsync($"/setacvalueindex {planGuid} {subGroup} {guidString} {values.Ac}", token).ConfigureAwait(false);
+        if (acResult.ExitCode != 0) return false;
+
+        var dcResult = await RunPowerCfgAsync($"/setdcvalueindex {planGuid} {subGroup} {guidString} {values.Dc}", token).ConfigureAwait(false);
+        return dcResult.ExitCode == 0;
+    }
+
     private async Task SetSettingValuesAsync(string planGuid, string subGroup, Guid settingGuid, PowerSettingValues values, CancellationToken token)
     {
         var guidString = settingGuid.ToString("D");
@@ -517,13 +527,10 @@ public sealed class PowerPlanService
 
     private async Task TrySetSettingValuesAsync(string planGuid, string subGroup, Guid settingGuid, PowerSettingValues values, CancellationToken token)
     {
-        try
+        bool success = await SetSettingValuesInternalAsync(planGuid, subGroup, settingGuid, values, token).ConfigureAwait(false);
+        if (!success)
         {
-            await SetSettingValuesAsync(planGuid, subGroup, settingGuid, values, token).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            Log($"Optional power setting {settingGuid:D} could not be set: {ex.Message}", "WARN");
+            Log($"Optional power setting {settingGuid:D} is hidden or locked on this system (skipped).", "INFO");
         }
     }
 
