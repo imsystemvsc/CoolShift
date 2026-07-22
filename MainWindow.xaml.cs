@@ -68,8 +68,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         if (Environment.GetCommandLineArgs().Contains("--hidden"))
         {
-            WindowState = WindowState.Minimized;
+            Hide();
             ShowInTaskbar = false;
+            WindowState = WindowState.Minimized;
             _hasShownTrayTip = true; // prevent balloon tip on auto-start
         }
 
@@ -100,7 +101,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         await InitializeMonitoringAsync().ConfigureAwait(false);
-        await BringToFrontAsync().ConfigureAwait(false);
+        if (!Environment.GetCommandLineArgs().Contains("--hidden"))
+        {
+            await BringToFrontAsync().ConfigureAwait(false);
+        }
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
