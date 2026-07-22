@@ -33,7 +33,7 @@ public sealed record ModeSnapshot(ParkMode Mode, PowerSettingValues Core, PowerS
 
 public sealed class PowerPlanService
 {
-    private const string LogFileName = "ParkToggle.log";
+    private const string LogFileName = "CoolShift.log";
 
     private static readonly Guid SubProcessorGuid = new("54533251-82be-4824-96c1-47b60b740d00");
     private static readonly Guid CoreGuid = new("0cc5b647-c1df-4637-891a-dec35c318583");

@@ -136,7 +136,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private string _gpuVoltageLabel = "⚡ GPU VCORE";
 
     [ObservableProperty]
-    private string _trayToolTipText = "Park Toggle";
+    private string _trayToolTipText = "CoolShift";
 
     [ObservableProperty]
     private string _automationStatusText = "Automation Status: Idle";

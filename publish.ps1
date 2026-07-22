@@ -16,6 +16,17 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+$desktopDir = "C:\Users\james\Desktop\CoolShift"
+if (-not (Test-Path $desktopDir)) {
+    New-Item -ItemType Directory -Path $desktopDir -Force
+}
+
+$publishExe = Join-Path $PSScriptRoot "bin\Release\net8.0-windows\win-x64\publish\ParkToggleWpf.exe"
+$desktopExe = Join-Path $desktopDir "CoolShift.exe"
+
+Copy-Item -Path $publishExe -Destination $desktopExe -Force
+Write-Host "Published single-file Release binary to: $desktopExe"
+
 # Create a ZIP for the release
 $binPath = "bin\Release\net8.0-windows"
 $zipPath = "ParkToggle-v1.0.0.zip"
