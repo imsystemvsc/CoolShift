@@ -52,8 +52,8 @@ Real-time hardware monitoring dashboard powered by LibreHardwareMonitor and nati
 
 ```powershell
 # Clone repository
-git clone https://github.com/imsystemvsc/Parktoggle.git
-cd Parktoggle
+git clone https://github.com/imsystemvsc/CoolShift.git
+cd CoolShift
 
 # Publish self-contained single-file Release binary
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false
