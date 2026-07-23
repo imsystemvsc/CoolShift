@@ -1,4 +1,6 @@
-# CoolShift ❄️⚡
+<p align="center">
+  <img src="Resources/social_card.png" alt="CoolShift Banner" width="850">
+</p>
 
 **CoolShift** (formerly *Park Toggle*) is a modern, ultra-lightweight Windows desktop utility designed to dynamically manage CPU core parking, processor frequency scaling, power plan states, and live hardware sensor telemetry.
 
