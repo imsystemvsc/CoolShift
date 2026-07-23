@@ -38,6 +38,30 @@
     <!-- Shadows -->
     <DropShadowEffect x:Key="CardShadow" BlurRadius="10" Opacity="0.2" ShadowDepth="4" Color="#000000" />
 
+    <!-- Global Dark ToolTip Style -->
+    <Style TargetType="ToolTip">
+        <Setter Property="Background" Value="#1F1F24" />
+        <Setter Property="Foreground" Value="#EEF0F4" />
+        <Setter Property="BorderBrush" Value="#383842" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Padding" Value="10,7,10,7" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="HasDropShadow" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToolTip">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ================================================================= -->
     <!-- OVERLAY SCROLLBAR STYLE (MUTED DARK THUMB, NO GREEN ARTIFACTS!)   -->
     <!-- ================================================================= -->

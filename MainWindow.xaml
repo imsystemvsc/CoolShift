@@ -506,7 +506,8 @@
                         <ComboBox x:Name="PlanCombo" 
                                   ItemsSource="{Binding ViewModel.Plans}" 
                                   SelectedItem="{Binding ViewModel.SelectedPlan}" 
-                                  DisplayMemberPath="Name">
+                                  DisplayMemberPath="Name"
+                                  ToolTip="Select the active Windows power plan. CoolShift dynamically adjusts core parking and CPU throttling for this plan.">
                             <ComboBox.Style>
                                 <Style TargetType="ComboBox" BasedOn="{StaticResource RoundedComboBoxStyle}">
                                     <Style.Triggers>
@@ -525,7 +526,7 @@
                     <StackPanel>
                         <TextBlock Text="QUICK ACTIONS" FontFamily="Bahnschrift" Foreground="{StaticResource MutedBrush}" FontSize="13" Margin="0,0,0,16" />
                         
-                        <Button Command="{Binding ViewModel.ToggleModeCommand}" HorizontalAlignment="Stretch" Margin="0,0,0,12" Padding="0" Cursor="Hand">
+                        <Button Command="{Binding ViewModel.ToggleModeCommand}" HorizontalAlignment="Stretch" Margin="0,0,0,12" Padding="0" Cursor="Hand" ToolTip="Manually toggle between energy-efficient Cool Idle and maximum-performance Always-On modes (Hotkey: Ctrl+Shift+P).">
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Setter Property="Template">
@@ -550,7 +551,7 @@
                             </Button.Style>
                         </Button>
 
-                        <Button Command="{Binding ViewModel.ToggleModeCommand}" HorizontalAlignment="Stretch" Margin="0,0,0,12" Padding="0" Cursor="Hand">
+                        <Button Command="{Binding ViewModel.ToggleModeCommand}" HorizontalAlignment="Stretch" Margin="0,0,0,12" Padding="0" Cursor="Hand" ToolTip="Manually toggle between energy-efficient Cool Idle and maximum-performance Always-On modes (Hotkey: Ctrl+Shift+P).">
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Setter Property="Template">
@@ -582,7 +583,7 @@
                                          <DataTrigger Binding="{Binding ViewModel.CurrentMode}" Value="Custom">
                                              <Setter Property="Visibility" Value="Visible" />
                                          </DataTrigger>
-                                    </Style.Triggers>
+                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
                         </Button>
@@ -608,7 +609,8 @@
                                     <Button Grid.Column="0"
                                             Command="{Binding ViewModel.SelectCoolIdleTierCommand}"
                                             CommandParameter="MaxCool"
-                                            Margin="1" Padding="4,6" Cursor="Hand">
+                                            Margin="1" Padding="4,6" Cursor="Hand"
+                                            ToolTip="MaxCool (85% Max CPU): Aggressive cooling &amp; power saving. Minimum CPU state 5%, delayed core unparking (~75ms), 8.1W idle at ~35°C.">
                                         <Button.Style>
                                             <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
                                                 <Setter Property="FontSize" Value="11" />
@@ -629,7 +631,8 @@
                                     <Button Grid.Column="1"
                                             Command="{Binding ViewModel.SelectCoolIdleTierCommand}"
                                             CommandParameter="Balanced"
-                                            Margin="1" Padding="4,6" Cursor="Hand">
+                                            Margin="1" Padding="4,6" Cursor="Hand"
+                                            ToolTip="Balanced (99% Max CPU): Disables CPU boost clocks for quiet, cool daily computing without power spikes.">
                                         <Button.Style>
                                             <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
                                                 <Setter Property="FontSize" Value="11" />
@@ -650,7 +653,8 @@
                                     <Button Grid.Column="2"
                                             Command="{Binding ViewModel.SelectCoolIdleTierCommand}"
                                             CommandParameter="Responsive"
-                                            Margin="1" Padding="4,6" Cursor="Hand">
+                                            Margin="1" Padding="4,6" Cursor="Hand"
+                                            ToolTip="Responsive (100% Max CPU): Keeps full 100% CPU frequency headroom while enabling dynamic idle clock downscaling.">
                                         <Button.Style>
                                             <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
                                                 <Setter Property="FontSize" Value="11" />
@@ -670,7 +674,7 @@
                             </Grid>
                         </Border>
 
-                        <Grid>
+                        <Grid ToolTip="Automatically launch CoolShift in the background when Windows boots up.">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
@@ -816,19 +820,19 @@
                                             </Grid.ColumnDefinitions>
 
                                             <!-- GPU Wattage -->
-                                            <StackPanel Grid.Column="0">
+                                            <StackPanel Grid.Column="0" ToolTip="Live GPU Board / Package Power consumption in Watts (W).">
                                                 <TextBlock Text="⚡ GPU POWER" FontFamily="Bahnschrift" FontSize="10" Foreground="{StaticResource MutedBrush}" />
                                                 <TextBlock Text="{Binding ViewModel.GpuPowerText, FallbackValue='65.0 W'}" FontFamily="Bahnschrift" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" Margin="0,2,0,0" />
                                             </StackPanel>
 
                                             <!-- GPU Clock -->
-                                            <StackPanel Grid.Column="1">
+                                            <StackPanel Grid.Column="1" ToolTip="Real-time GPU Core Clock speed in MHz.">
                                                 <TextBlock Text="⏱️ GPU CLOCK" FontFamily="Bahnschrift" FontSize="10" Foreground="{StaticResource MutedBrush}" />
                                                 <TextBlock Text="{Binding ViewModel.GpuClockText, FallbackValue='2100 MHz'}" FontFamily="Bahnschrift" FontSize="16" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,2,0,0" />
                                             </StackPanel>
 
                                             <!-- GPU Voltage / Temp -->
-                                            <StackPanel Grid.Column="2">
+                                            <StackPanel Grid.Column="2" ToolTip="Live GPU Core Voltage read directly from MSI Afterburner shared memory.">
                                                 <TextBlock Text="{Binding ViewModel.GpuVoltageLabel, FallbackValue='⚡ GPU VCORE'}" FontFamily="Bahnschrift" FontSize="10" Foreground="{StaticResource MutedBrush}" />
                                                 <TextBlock Text="{Binding ViewModel.GpuVoltageText, FallbackValue='1.05 V'}" FontFamily="Bahnschrift" FontSize="16" FontWeight="Bold" Foreground="{StaticResource ForegroundBrush}" Margin="0,2,0,0" />
                                             </StackPanel>
@@ -842,7 +846,7 @@
                 <!-- RIGHT COLUMN: BOTTOM (Card 4: Core Parking Status) -->
                 <Border Grid.Row="1" Grid.Column="1" Background="#191919" CornerRadius="10" Padding="20" BorderBrush="#333333" BorderThickness="1">
                     <StackPanel>
-                        <TextBlock Text="LOGICAL CORE TOPOGRAPHY MAP" FontFamily="Bahnschrift" Foreground="{StaticResource MutedBrush}" FontSize="13" Margin="0,0,0,16" />
+                        <TextBlock Text="LOGICAL CORE TOPOGRAPHY MAP" FontFamily="Bahnschrift" Foreground="{StaticResource MutedBrush}" FontSize="13" Margin="0,0,0,16" ToolTip="Real-time map of unparked (green glow) vs. parked (dark gray) logical CPU cores." />
                         
                         <ItemsControl ItemsSource="{Binding ViewModel.Cores}">
                             <ItemsControl.ItemsPanel>
@@ -1096,10 +1100,10 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                    </Grid>
-                                </Grid>
-                            </Grid>
-                        </Border>
+                                     </Grid>
+                                 </Grid>
+                             </Grid>
+                         </Border>
                     </TabItem>
                     
                     <TabItem Header="Automation">
@@ -1120,7 +1124,7 @@
                                 <StackPanel Grid.Row="0" Margin="0,0,0,24">
                                     <TextBlock Text="SMART BATTERY DETECTION" FontFamily="Bahnschrift" Foreground="{StaticResource ForegroundBrush}" FontSize="16" Margin="0,0,0,4" />
                                     <TextBlock Text="Automatically forces 'Cool Idle' when unplugged, ignoring games." Foreground="{StaticResource MutedBrush}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,12" />
-                                    <CheckBox Content="Enable Smart Battery Override" IsChecked="{Binding ViewModel.AutomationSettings.SmartBatteryEnabled}" Foreground="{StaticResource ForegroundBrush}" />
+                                    <CheckBox Content="Enable Smart Battery Override" IsChecked="{Binding ViewModel.AutomationSettings.SmartBatteryEnabled}" Foreground="{StaticResource ForegroundBrush}" ToolTip="Automatically enforce Cool Idle mode when running on battery power to conserve battery life." />
                                 </StackPanel>
 
                                 <!-- Game Auto-Switching -->
@@ -1134,8 +1138,8 @@
                                         <TextBlock Text="GAME AUTO-SWITCHING" FontFamily="Bahnschrift" Foreground="{StaticResource ForegroundBrush}" FontSize="16" Margin="0,0,0,4" />
                                         <TextBlock Text="Forces 'Always-On' when these apps are running." Foreground="{StaticResource MutedBrush}" FontSize="13" TextWrapping="Wrap" />
                                     </StackPanel>
-                                    <Button Grid.Column="1" Content="Pick Running..." Command="{Binding ViewModel.AddRunningGameCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="16 8" Margin="0 0 10 0" />
-                                    <Button Grid.Column="2" Content="Browse..." Command="{Binding ViewModel.AddGameExecutableCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="16 8" />
+                                    <Button Grid.Column="1" Content="Pick Running..." Command="{Binding ViewModel.AddRunningGameCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="16 8" Margin="0 0 10 0" ToolTip="Select from currently running background applications and games." />
+                                    <Button Grid.Column="2" Content="Browse..." Command="{Binding ViewModel.AddGameExecutableCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="16 8" ToolTip="Manually select an executable file (.exe) from your file system." />
                                 </Grid>
 
                                 <!-- Configured Games List -->
