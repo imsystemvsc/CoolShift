@@ -185,11 +185,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             try
             {
-                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, false))
-                {
-                    if (key?.GetValue(AppName) != null) return true;
-                }
-
                 var psi = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "schtasks",
@@ -199,7 +194,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 };
                 using var process = System.Diagnostics.Process.Start(psi);
                 process?.WaitForExit();
-                return process?.ExitCode == 0;
+                if (process?.ExitCode == 0) return true;
+
+                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, false))
+                {
+                    if (key?.GetValue(AppName) != null) return true;
+                }
+
+                return false;
             }
             catch
             {
@@ -210,6 +212,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             try
             {
+                // Clean legacy entries
                 using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true))
                 {
                     if (key?.GetValue(LegacyAppName) != null)
@@ -264,29 +267,36 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (string.IsNullOrEmpty(exePath)) return;
         try
         {
-            var arguments = $"/create /tn \"{appName}\" /tr \"\\\"{exePath}\\\" --hidden\" /sc onlogon /rl highest /f";
+            var psScript = $"$action = New-ScheduledTaskAction -Execute '{exePath}' -Argument '--hidden'; " +
+                           $"$trigger = New-ScheduledTaskTrigger -AtLogOn; " +
+                           $"$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan); " +
+                           $"Register-ScheduledTask -TaskName '{appName}' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force";
+
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "schtasks",
-                Arguments = arguments,
+                FileName = "powershell.exe",
+                Arguments = $"-NoProfile -NonInteractive -WindowStyle Hidden -Command \"{psScript}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
             using var process = System.Diagnostics.Process.Start(psi);
             process?.WaitForExit();
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine($"Failed to create scheduled task: {ex.Message}");
+        }
     }
 
     private static void DeleteSchTask(string appName)
     {
         try
         {
-            var arguments = $"/delete /tn \"{appName}\" /f";
+            var psScript = $"Unregister-ScheduledTask -TaskName '{appName}' -Confirm:$false -ErrorAction SilentlyContinue";
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "schtasks",
-                Arguments = arguments,
+                FileName = "powershell.exe",
+                Arguments = $"-NoProfile -NonInteractive -WindowStyle Hidden -Command \"{psScript}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
