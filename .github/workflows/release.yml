@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Park Toggle
+    name: Build CoolShift
     runs-on: windows-latest
 
     steps:
@@ -25,11 +25,8 @@ jobs:
     - name: Publish Executable
       run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false
 
-    - name: Rename Executable (Optional)
-      run: Rename-Item -Path "bin\Release\net8.0-windows\win-x64\publish\ParkToggleWpf.exe" -NewName "ParkToggle.exe"
-      
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        files: bin\Release\net8.0-windows\win-x64\publish\ParkToggle.exe
+        files: bin\Release\net8.0-windows\win-x64\publish\CoolShift.exe
         generate_release_notes: true

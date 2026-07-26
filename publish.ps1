@@ -22,10 +22,10 @@ Copy-Item -Path $publishExe -Destination $desktopExe -Force
 Write-Host "Published self-contained Release binary to: $desktopExe"
 
 # Create a ZIP for the release
-$zipPath = "CoolShift-v2.1.3.zip"
+$zipPath = "CoolShift-v2.1.4.zip"
 if (Test-Path $zipPath) { Remove-Item $zipPath }
 Compress-Archive -Path $publishExe -DestinationPath $zipPath
 
 # Create/upload release on GitHub
-gh release create v2.1.3 $zipPath -t "CoolShift v2.1.3" -n "CoolShift release with updated assembly metadata and self-contained single-file executable."
+gh release create v2.1.4 $zipPath -t "CoolShift v2.1.4" -n "CoolShift release with renamed project files, updated metadata, and self-contained single-file executable."
 Write-Host "GitHub release updated successfully."
