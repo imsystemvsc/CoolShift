@@ -9,9 +9,11 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Resources\Icons\main.ico</ApplicationIcon>
     <Company>Imsystem Software</Company>
-    <Product>Park Toggle</Product>
+    <Product>CoolShift</Product>
+    <Title>CoolShift</Title>
+    <AssemblyName>CoolShift</AssemblyName>
     <Authors>Imsystem Software</Authors>
-    <Version>1.0.0</Version>
+    <Version>2.1.3</Version>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Resources\Icons\*.ico" />

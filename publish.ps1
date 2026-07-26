@@ -1,18 +1,12 @@
-git init
+# Commit and push to git
 git add .
-git commit -m "Initial commit with new UI and Startup fixes"
-git branch -M main
-gh repo create imsystemvsc/Parktoggle --public --source . --remote origin --push
-if ($LASTEXITCODE -ne 0) {
-    # If repo already exists, just push
-    git remote add origin https://github.com/imsystemvsc/Parktoggle.git
-    git push -u origin main --force
-}
+git commit -m "Update assembly name and title to CoolShift"
+git push origin main
 
-# Build the release
-dotnet build -c Release
+# Build self-contained Release single-file executable
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Build failed"
+    Write-Host "Publish failed"
     exit 1
 }
 
@@ -21,17 +15,17 @@ if (-not (Test-Path $desktopDir)) {
     New-Item -ItemType Directory -Path $desktopDir -Force
 }
 
-$publishExe = Join-Path $PSScriptRoot "bin\Release\net8.0-windows\win-x64\publish\ParkToggleWpf.exe"
+$publishExe = Join-Path $PSScriptRoot "bin\Release\net8.0-windows\win-x64\publish\CoolShift.exe"
 $desktopExe = Join-Path $desktopDir "CoolShift.exe"
 
 Copy-Item -Path $publishExe -Destination $desktopExe -Force
-Write-Host "Published single-file Release binary to: $desktopExe"
+Write-Host "Published self-contained Release binary to: $desktopExe"
 
 # Create a ZIP for the release
-$binPath = "bin\Release\net8.0-windows"
-$zipPath = "ParkToggle-v1.0.0.zip"
+$zipPath = "CoolShift-v2.1.3.zip"
 if (Test-Path $zipPath) { Remove-Item $zipPath }
-Compress-Archive -Path "$binPath\*" -DestinationPath $zipPath
+Compress-Archive -Path $publishExe -DestinationPath $zipPath
 
-# Create the release
-gh release create v1.0.0 $zipPath -t "ParkToggle v1.0.0" -n "Initial release with updated UI, Core Parking features, and System Vital Statistics"
+# Create/upload release on GitHub
+gh release create v2.1.3 $zipPath -t "CoolShift v2.1.3" -n "CoolShift release with updated assembly metadata and self-contained single-file executable."
+Write-Host "GitHub release updated successfully."
