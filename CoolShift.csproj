@@ -15,7 +15,7 @@
     <PackageId>CoolShift</PackageId>
     <AssemblyName>CoolShift</AssemblyName>
     <Authors>Imsystem Software</Authors>
-    <Version>2.1.4</Version>
+    <Version>2.1.5</Version>
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Resources\Icons\*.ico" />
