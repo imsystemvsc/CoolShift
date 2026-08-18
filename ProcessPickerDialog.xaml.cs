@@ -5,7 +5,7 @@ using System.Windows;
 using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 
-namespace ParkToggleWpf;
+namespace CoolShift;
 
 public class ProcessInfo
 {

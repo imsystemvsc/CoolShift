@@ -1,6 +1,6 @@
 using System;
 
-namespace ParkToggleWpf.Monitoring;
+namespace CoolShift.Monitoring;
 
 internal sealed class SensorPreferenceEntity
 {

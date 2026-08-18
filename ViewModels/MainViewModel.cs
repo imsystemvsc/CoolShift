@@ -14,10 +14,10 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
 using Microsoft.Win32;
-using ParkToggleWpf.Monitoring;
-using ParkToggleWpf;
+using CoolShift.Monitoring;
+using CoolShift;
 
-namespace ParkToggleWpf.ViewModels;
+namespace CoolShift.ViewModels;
 
 public class TargetExecutableViewModel
 {
@@ -183,45 +183,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         get
         {
-            try
-            {
-                var psi = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = "schtasks",
-                    Arguments = $"/query /tn \"{AppName}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-                using var process = System.Diagnostics.Process.Start(psi);
-                process?.WaitForExit();
-                if (process?.ExitCode == 0) return true;
-
-                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, false))
-                {
-                    if (key?.GetValue(AppName) != null) return true;
-                }
-
-                return false;
-            }
-            catch
-            {
-                return false;
-            }
+            return RunScheduledTaskCommand("query", "/Query", "/TN", AppName);
         }
         set
         {
             try
             {
-                // Clean legacy entries
-                using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true))
-                {
-                    if (key?.GetValue(LegacyAppName) != null)
-                    {
-                        key.DeleteValue(LegacyAppName, false);
-                    }
-                }
-                DeleteSchTask(LegacyAppName);
-
                 var exePath = Environment.ProcessPath;
                 if (exePath != null && exePath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
                 {
@@ -230,84 +197,143 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
                 if (value)
                 {
-                    using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true))
+                    if (string.IsNullOrWhiteSpace(exePath) || !CreateSchTask(AppName, exePath))
                     {
-                        if (key != null && !string.IsNullOrEmpty(exePath))
-                        {
-                            key.SetValue(AppName, $"\"{exePath}\" --hidden");
-                        }
+                        throw new InvalidOperationException("Windows did not create the CoolShift startup task.");
                     }
-
-                    CreateSchTask(AppName, exePath);
                 }
                 else
                 {
-                    using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true))
+                    if (!DeleteSchTask(AppName))
                     {
-                        if (key?.GetValue(AppName) != null)
-                        {
-                            key.DeleteValue(AppName, false);
-                        }
+                        throw new InvalidOperationException("Windows did not remove the CoolShift startup task.");
                     }
-
-                    DeleteSchTask(AppName);
                 }
-                
+
+                RemoveRunEntry(AppName);
+                RemoveRunEntry(LegacyAppName);
+                DeleteSchTask(LegacyAppName);
                 OnPropertyChanged(nameof(StartWithWindows));
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Trace.WriteLine($"Failed to set StartWithWindows: {ex.Message}");
+                System.Windows.MessageBox.Show(
+                    $"Unable to update Start with Windows: {ex.Message}",
+                    "CoolShift",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
             }
         }
     }
 
-    private static void CreateSchTask(string appName, string? exePath)
+    private static bool CreateSchTask(string appName, string exePath)
     {
-        if (string.IsNullOrEmpty(exePath)) return;
+        var taskCommand = $"\"{exePath}\" --hidden";
+        return RunScheduledTaskCommand(
+            "create",
+            "/Create",
+            "/TN", appName,
+            "/TR", taskCommand,
+            "/SC", "ONLOGON",
+            "/RL", "HIGHEST",
+            "/F");
+    }
+
+    private static bool DeleteSchTask(string appName)
+    {
+        if (!RunScheduledTaskCommand("query", "/Query", "/TN", appName))
+        {
+            return true;
+        }
+
+        return RunScheduledTaskCommand("delete", "/Delete", "/TN", appName, "/F");
+    }
+
+    private static bool RunScheduledTaskCommand(string operation, params string[] arguments)
+    {
         try
         {
-            var psScript = $"$action = New-ScheduledTaskAction -Execute '{exePath}' -Argument '--hidden'; " +
-                           $"$trigger = New-ScheduledTaskTrigger -AtLogOn; " +
-                           $"$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan); " +
-                           $"Register-ScheduledTask -TaskName '{appName}' -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force";
-
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -NonInteractive -WindowStyle Hidden -Command \"{psScript}\"",
+                FileName = "schtasks.exe",
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                RedirectStandardError = true,
             };
+
+            foreach (var argument in arguments)
+            {
+                psi.ArgumentList.Add(argument);
+            }
+
             using var process = System.Diagnostics.Process.Start(psi);
-            process?.WaitForExit();
+            if (process is null)
+            {
+                return false;
+            }
+
+            var standardError = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+            if (process.ExitCode == 0)
+            {
+                return true;
+            }
+
+            System.Diagnostics.Trace.WriteLine($"Scheduled task {operation} failed with exit code {process.ExitCode}: {standardError.Trim()}");
+            return false;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Trace.WriteLine($"Failed to create scheduled task: {ex.Message}");
+            System.Diagnostics.Trace.WriteLine($"Scheduled task {operation} failed: {ex.Message}");
+            return false;
         }
     }
 
-    private static void DeleteSchTask(string appName)
+    private static void RemoveRunEntry(string appName)
     {
         try
         {
-            var psScript = $"Unregister-ScheduledTask -TaskName '{appName}' -Confirm:$false -ErrorAction SilentlyContinue";
-            var psi = new System.Diagnostics.ProcessStartInfo
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true);
+            if (key?.GetValue(appName) is not null)
             {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -NonInteractive -WindowStyle Hidden -Command \"{psScript}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            using var process = System.Diagnostics.Process.Start(psi);
-            process?.WaitForExit();
+                key.DeleteValue(appName, false);
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine($"Failed to remove legacy startup entry {appName}: {ex.Message}");
+        }
+    }
+
+    private static void MigrateStartupRegistration()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RegistryKeyPath, false);
+            var hadRunEntry = key?.GetValue(AppName) is not null || key?.GetValue(LegacyAppName) is not null;
+            if (!hadRunEntry)
+            {
+                return;
+            }
+
+            var exePath = Environment.ProcessPath;
+            if (!string.IsNullOrWhiteSpace(exePath) && CreateSchTask(AppName, exePath))
+            {
+                RemoveRunEntry(AppName);
+                RemoveRunEntry(LegacyAppName);
+                DeleteSchTask(LegacyAppName);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.WriteLine($"Failed to migrate startup registration: {ex.Message}");
+        }
     }
 
     public MainViewModel()
     {
+        MigrateStartupRegistration();
         _powerPlanService = new PowerPlanService();
         _coreParkingService = new CoreParkingService();
         
@@ -579,7 +605,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Refresh failed: {ex.Message}", "Park Toggle", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"Refresh failed: {ex.Message}", "CoolShift", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -630,7 +656,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Toggle failed: {ex.Message}", "Park Toggle", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"Toggle failed: {ex.Message}", "CoolShift", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -657,7 +683,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Failed to set plan: {ex.Message}", "Park Toggle", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"Failed to set plan: {ex.Message}", "CoolShift", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -811,7 +837,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Unable to open log: {ex.Message}", "Park Toggle", MessageBoxButton.OK, MessageBoxImage.Error);
+            System.Windows.MessageBox.Show($"Unable to open log: {ex.Message}", "CoolShift", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

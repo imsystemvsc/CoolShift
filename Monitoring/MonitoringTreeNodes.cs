@@ -6,7 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using LibreHardwareMonitor.Hardware;
 
-namespace ParkToggleWpf.Monitoring;
+namespace CoolShift.Monitoring;
 
 public abstract class MonitoringTreeNode : INotifyPropertyChanged
 {

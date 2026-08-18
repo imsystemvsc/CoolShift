@@ -9,6 +9,8 @@
 # zip files
 *.zip
 
+# Local structural index cache
+
 # User-specific files
 *.rsuser
 *.suo

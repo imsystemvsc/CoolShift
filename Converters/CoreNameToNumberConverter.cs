@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using System.Windows.Data;
 
-namespace ParkToggleWpf.Converters;
+namespace CoolShift.Converters;
 
 public class CoreNameToNumberConverter : IValueConverter
 {

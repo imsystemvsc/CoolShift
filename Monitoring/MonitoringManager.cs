@@ -4,23 +4,20 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ParkToggleWpf.Monitoring;
+namespace CoolShift.Monitoring;
 
 internal sealed class MonitoringManager : IAsyncDisposable, IDisposable
 {
     private readonly HardwareMonitorService _hardware;
-    private readonly MonitoringRepository _repository;
     private readonly MonitoringOptions _options;
     private readonly CancellationTokenSource _cts = new();
     private Task? _loopTask;
-    private readonly TimeSpan _purgeInterval = TimeSpan.FromMinutes(30);
 
     public event EventHandler<MonitoringSample>? SampleCaptured;
 
-    public MonitoringManager(HardwareMonitorService hardware, MonitoringRepository repository, MonitoringOptions options)
+    public MonitoringManager(HardwareMonitorService hardware, MonitoringOptions options)
     {
         _hardware = hardware;
-        _repository = repository;
         _options = options;
     }
 
@@ -63,8 +60,6 @@ internal sealed class MonitoringManager : IAsyncDisposable, IDisposable
 
     private async Task RunAsync(CancellationToken cancellationToken)
     {
-        var lastPurge = DateTimeOffset.UtcNow;
-
         while (!cancellationToken.IsCancellationRequested)
         {
             var timestamp = DateTimeOffset.UtcNow;
@@ -82,39 +77,7 @@ internal sealed class MonitoringManager : IAsyncDisposable, IDisposable
 
             var snapshot = new MonitoringSample(timestamp, samples);
 
-            try
-            {
-                await _repository.SaveSampleAsync(snapshot, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"Failed to persist monitoring sample: {ex}");
-            }
-
             RaiseSampleCaptured(snapshot);
-
-            if (timestamp - lastPurge >= _purgeInterval)
-            {
-                try
-                {
-                    var cutoff = timestamp - _options.RetentionPeriod;
-                    await _repository.PurgeOlderThanAsync(cutoff, cancellationToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine($"Failed to purge monitoring samples: {ex}");
-                }
-
-                lastPurge = timestamp;
-            }
 
             try
             {

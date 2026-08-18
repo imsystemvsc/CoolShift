@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using LibreHardwareMonitor.Hardware;
 
-namespace ParkToggleWpf.Monitoring;
+namespace CoolShift.Monitoring;
 
 public sealed class SensorSelectionViewModel : INotifyPropertyChanged
 {

@@ -4,7 +4,7 @@ using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace ParkToggleWpf;
+namespace CoolShift;
 
 public static class MsiAfterburnerReader
 {

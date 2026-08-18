@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using LibreHardwareMonitor.Hardware;
 
-namespace ParkToggleWpf.Monitoring;
+namespace CoolShift.Monitoring;
 
 internal readonly record struct SensorDisplayNameSegments(string Hardware, string Group, string Sensor);
 

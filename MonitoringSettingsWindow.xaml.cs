@@ -4,9 +4,9 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using ParkToggleWpf.Monitoring;
+using CoolShift.Monitoring;
 
-namespace ParkToggleWpf;
+namespace CoolShift;
 
 public partial class MonitoringSettingsWindow : Window
 {

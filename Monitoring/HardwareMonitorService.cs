@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using LibreHardwareMonitor.Hardware;
 
-namespace ParkToggleWpf.Monitoring;
+namespace CoolShift.Monitoring;
 
 internal sealed class HardwareMonitorService : IDisposable
 {

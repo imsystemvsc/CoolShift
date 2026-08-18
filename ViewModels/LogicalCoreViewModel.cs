@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace ParkToggleWpf.ViewModels;
+namespace CoolShift.ViewModels;
 
 public partial class LogicalCoreViewModel : ObservableObject
 {

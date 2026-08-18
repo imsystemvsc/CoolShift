@@ -1,6 +1,6 @@
 using LibreHardwareMonitor.Hardware;
 
-namespace ParkToggleWpf.Monitoring;
+namespace CoolShift.Monitoring;
 
 internal readonly record struct SensorSample(
     string SensorId,

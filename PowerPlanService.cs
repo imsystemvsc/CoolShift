@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ParkToggleWpf;
+namespace CoolShift;
 
 public enum ParkMode
 {
@@ -31,6 +31,79 @@ public sealed record PowerPlan(string Guid, string Name, bool IsActive)
 public sealed record PowerSettingValues(int Ac, int Dc);
 public sealed record ModeSnapshot(ParkMode Mode, PowerSettingValues Core, PowerSettingValues Idle);
 
+public static class PowerCfgOutputParser
+{
+    private static readonly Regex GuidRegex = new(
+        pattern: "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+        options: RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex HexRegex = new(
+        pattern: "0x[0-9a-fA-F]+",
+        options: RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    public static bool TryParseSettingValues(string? output, Guid settingGuid, out PowerSettingValues values)
+    {
+        values = new PowerSettingValues(0, 0);
+        if (string.IsNullOrWhiteSpace(output))
+        {
+            return false;
+        }
+
+        var targetGuid = settingGuid.ToString("D");
+        var inTargetBlock = false;
+        var candidates = new List<int>();
+
+        foreach (var rawLine in EnumerateLines(output))
+        {
+            var guidMatch = GuidRegex.Match(rawLine);
+            if (guidMatch.Success)
+            {
+                var isTarget = string.Equals(guidMatch.Value, targetGuid, StringComparison.OrdinalIgnoreCase);
+                if (inTargetBlock && !isTarget)
+                {
+                    break;
+                }
+
+                if (isTarget)
+                {
+                    inTargetBlock = true;
+                    candidates.Clear();
+                }
+
+                continue;
+            }
+
+            if (!inTargetBlock)
+            {
+                continue;
+            }
+
+            foreach (Match match in HexRegex.Matches(rawLine))
+            {
+                candidates.Add(Convert.ToInt32(match.Value.Substring(2), 16));
+            }
+        }
+
+        if (candidates.Count < 2)
+        {
+            return false;
+        }
+
+        values = new PowerSettingValues(candidates[^2], candidates[^1]);
+        return true;
+    }
+
+    private static IEnumerable<string> EnumerateLines(string text)
+    {
+        using var reader = new StringReader(text);
+        string? line;
+        while ((line = reader.ReadLine()) is not null)
+        {
+            yield return line;
+        }
+    }
+}
+
 public sealed class PowerPlanService
 {
     private const string LogFileName = "CoolShift.log";
@@ -45,15 +118,12 @@ public sealed class PowerPlanService
     private static readonly string VisibilityMarkerPath = ResolveVisibilityMarkerPath();
     private static readonly TimeSpan VisibilityMarkerTtl = TimeSpan.FromDays(7); // periodic refresh in case Windows hides settings again
     private static readonly SemaphoreSlim SettingVisibilityLock = new(1, 1);
+    private static readonly SemaphoreSlim ModeChangeLock = new(1, 1);
     private static bool _settingsVisibilityEnsured;
     private static string? _lastVisibilityError;
 
     private static readonly Regex PlanLineRegex = new(
         pattern: "^\\s*Power\\s+Scheme\\s+GUID:\\s*([0-9a-fA-F-]+)\\s*\\((.+?)\\)\\s*(\\*)?$",
-        options: RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-    private static readonly Regex HexRegex = new(
-        pattern: "0x[0-9a-fA-F]+",
         options: RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private readonly string _logPath;
@@ -69,7 +139,8 @@ public sealed class PowerPlanService
     public PowerPlanService()
     {
         var baseDir = AppContext.BaseDirectory;
-        var logDirectory = Path.Combine(baseDir, "Logs");
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var logDirectory = Path.Combine(appData, "CoolShift", "Logs");
 
         try
         {
@@ -162,12 +233,33 @@ public sealed class PowerPlanService
 
     public async Task ToggleModeAsync(string planGuid, string planName, CoolIdleTier tier = CoolIdleTier.Balanced, CancellationToken token = default)
     {
-        var snapshot = await GetModeSnapshotAsync(planGuid, token).ConfigureAwait(false);
-        var target = snapshot.Mode == ParkMode.CoolIdle ? ParkMode.AlwaysOn : ParkMode.CoolIdle;
-        await SetModeAsync(planGuid, planName, target, tier, token).ConfigureAwait(false);
+        await ModeChangeLock.WaitAsync(token).ConfigureAwait(false);
+        try
+        {
+            var snapshot = await GetModeSnapshotAsync(planGuid, token).ConfigureAwait(false);
+            var target = snapshot.Mode == ParkMode.CoolIdle ? ParkMode.AlwaysOn : ParkMode.CoolIdle;
+            await SetModeCoreAsync(planGuid, planName, target, tier, token).ConfigureAwait(false);
+        }
+        finally
+        {
+            ModeChangeLock.Release();
+        }
     }
 
     public async Task SetModeAsync(string planGuid, string planName, ParkMode mode, CoolIdleTier tier = CoolIdleTier.Balanced, CancellationToken token = default)
+    {
+        await ModeChangeLock.WaitAsync(token).ConfigureAwait(false);
+        try
+        {
+            await SetModeCoreAsync(planGuid, planName, mode, tier, token).ConfigureAwait(false);
+        }
+        finally
+        {
+            ModeChangeLock.Release();
+        }
+    }
+
+    private async Task SetModeCoreAsync(string planGuid, string planName, ParkMode mode, CoolIdleTier tier, CancellationToken token)
     {
         await EnsureCpuParkingSettingsVisibleAsync(token).ConfigureAwait(false);
 
@@ -208,15 +300,39 @@ public sealed class PowerPlanService
             _ => throw new ArgumentException("Mode must be CoolIdle or AlwaysOn.", nameof(mode)),
         };
 
-        await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", CoreGuid, coreValues, token).ConfigureAwait(false);
-        await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", IdleGuid, idleValues, token).ConfigureAwait(false);
-        await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", MaxPerfStateGuid, maxPerfValues, token).ConfigureAwait(false);
-        await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", MinPerfStateGuid, mode == ParkMode.CoolIdle ? new PowerSettingValues(5, 5) : new PowerSettingValues(100, 100), token).ConfigureAwait(false);
-        await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", PerfIncTimeGuid, perfIncTimeValues, token).ConfigureAwait(false);
-        await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", CpIncreasePolGuid, cpIncreasePolValues, token).ConfigureAwait(false);
+        var desiredSettings = new (Guid Setting, PowerSettingValues Values)[]
+        {
+            (CoreGuid, coreValues),
+            (IdleGuid, idleValues),
+            (MaxPerfStateGuid, maxPerfValues),
+            (MinPerfStateGuid, mode == ParkMode.CoolIdle ? new PowerSettingValues(5, 5) : new PowerSettingValues(100, 100)),
+            (PerfIncTimeGuid, perfIncTimeValues),
+            (CpIncreasePolGuid, cpIncreasePolValues),
+        };
 
-        var activateResult = await RunPowerCfgAsync($"-S {cleanPlan}", token).ConfigureAwait(false);
-        EnsureSuccess(activateResult, $"powercfg -S {cleanPlan}");
+        var originalSettings = new Dictionary<Guid, PowerSettingValues>();
+        foreach (var (setting, _) in desiredSettings)
+        {
+            originalSettings[setting] = await GetSettingValuesAsync(cleanPlan, setting, token).ConfigureAwait(false);
+        }
+
+        var appliedSettings = new List<Guid>();
+        try
+        {
+            foreach (var (setting, values) in desiredSettings)
+            {
+                await SetSettingValuesAsync(cleanPlan, "SUB_PROCESSOR", setting, values, token).ConfigureAwait(false);
+                appliedSettings.Add(setting);
+            }
+
+            var activateResult = await RunPowerCfgAsync($"-S {cleanPlan}", token).ConfigureAwait(false);
+            EnsureSuccess(activateResult, $"powercfg -S {cleanPlan}");
+        }
+        catch
+        {
+            await RestoreSettingsAsync(cleanPlan, appliedSettings, originalSettings).ConfigureAwait(false);
+            throw;
+        }
 
         var modeLabel = mode == ParkMode.CoolIdle ? $"{ModeToDisplay(mode)} [{TierToDisplay(tier)}]" : ModeToDisplay(mode);
         Log($"Switched to {modeLabel} ({planName})");
@@ -236,11 +352,19 @@ public sealed class PowerPlanService
             throw new ArgumentException("Plan GUID cannot be empty.", nameof(planGuid));
         }
 
-        var cleanGuid = planGuid.Trim().Trim('{', '}');
-        var result = await RunPowerCfgAsync($"/setactive {cleanGuid}", token).ConfigureAwait(false);
-        EnsureSuccess(result, $"powercfg /setactive {cleanGuid}");
+        await ModeChangeLock.WaitAsync(token).ConfigureAwait(false);
+        try
+        {
+            var cleanGuid = planGuid.Trim().Trim('{', '}');
+            var result = await RunPowerCfgAsync($"/setactive {cleanGuid}", token).ConfigureAwait(false);
+            EnsureSuccess(result, $"powercfg /setactive {cleanGuid}");
 
-        Log($"Switched active power plan to {planName} ({cleanGuid})");
+            Log($"Switched active power plan to {planName} ({cleanGuid})");
+        }
+        finally
+        {
+            ModeChangeLock.Release();
+        }
     }
 
     public static string ModeToDisplay(ParkMode mode) => mode switch
@@ -323,85 +447,10 @@ public sealed class PowerPlanService
     private async Task<PowerSettingValues> GetSettingValuesAsync(string planGuid, Guid settingGuid, CancellationToken token, bool retrying = false)
     {
         var cleanPlan = planGuid.Trim().Trim('{', '}');
-        var targetGuid = settingGuid.ToString().ToLowerInvariant();
         var result = await RunPowerCfgAsync($"/query {cleanPlan} {SubProcessorGuid}", token).ConfigureAwait(false);
         EnsureSuccess(result, $"powercfg /query {cleanPlan}");
 
-        var isTarget = false;
-        int? ac = null;
-        int? dc = null;
-
-        foreach (var rawLine in EnumerateLines(result.StandardOutput))
-        {
-            var line = rawLine.Trim();
-            if (line.Length == 0)
-            {
-                if (isTarget && (ac.HasValue || dc.HasValue))
-                {
-                    break;
-                }
-
-                continue;
-            }
-
-            if (line.StartsWith("Power Setting GUID", StringComparison.OrdinalIgnoreCase))
-            {
-                var sections = line.Split(':', 2);
-                if (sections.Length < 2)
-                {
-                    continue;
-                }
-
-                var guidToken = sections[1].Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-                if (guidToken is null)
-                {
-                    continue;
-                }
-
-                var candidate = guidToken.Trim().Trim('{', '}').ToLowerInvariant();
-                isTarget = candidate == targetGuid;
-                if (isTarget)
-                {
-                    ac = null;
-                    dc = null;
-                }
-
-                continue;
-            }
-
-            if (!isTarget)
-            {
-                continue;
-            }
-
-            var match = HexRegex.Match(line);
-            if (!match.Success)
-            {
-                continue;
-            }
-
-            var value = Convert.ToInt32(match.Value.Substring(2), 16);
-            var upper = line.ToUpperInvariant();
-
-            if (upper.Contains("AC"))
-            {
-                ac = value;
-            }
-            else if (upper.Contains("DC"))
-            {
-                dc = value;
-            }
-            else if (!ac.HasValue)
-            {
-                ac = value;
-            }
-            else if (!dc.HasValue)
-            {
-                dc = value;
-            }
-        }
-
-        if (!ac.HasValue && !dc.HasValue)
+        if (!PowerCfgOutputParser.TryParseSettingValues(result.StandardOutput, settingGuid, out var values))
         {
             if (!retrying)
             {
@@ -413,7 +462,7 @@ public sealed class PowerPlanService
             var companion = settingGuid == CoreGuid ? IdleGuid : CoreGuid;
             var builder = new StringBuilder();
             builder.Append($"Unable to read power settings for {settingGuid:D}. Windows may have hidden this setting again.");
-            builder.Append($" Run Park Toggle as administrator or execute `{command}` from an elevated command prompt.");
+            builder.Append($" Run CoolShift as administrator or execute `{command}` from an elevated command prompt.");
             builder.Append($" Repeat the command for `{companion:D}` to unhide the companion setting.");
 
             if (!string.IsNullOrWhiteSpace(_lastVisibilityError))
@@ -426,10 +475,36 @@ public sealed class PowerPlanService
             throw new InvalidOperationException(message);
         }
 
-        var resolvedAc = ac ?? dc ?? 0;
-        var resolvedDc = dc ?? ac ?? 0;
+        return values;
+    }
 
-        return new PowerSettingValues(resolvedAc, resolvedDc);
+    private async Task RestoreSettingsAsync(
+        string planGuid,
+        IReadOnlyList<Guid> appliedSettings,
+        IReadOnlyDictionary<Guid, PowerSettingValues> originalSettings)
+    {
+        for (var i = appliedSettings.Count - 1; i >= 0; i--)
+        {
+            var setting = appliedSettings[i];
+            try
+            {
+                await SetSettingValuesAsync(planGuid, "SUB_PROCESSOR", setting, originalSettings[setting], CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Log($"Failed to restore power setting {setting:D}: {ex.Message}", "ERROR");
+            }
+        }
+
+        try
+        {
+            var activateResult = await RunPowerCfgAsync($"-S {planGuid}", CancellationToken.None).ConfigureAwait(false);
+            EnsureSuccess(activateResult, $"powercfg -S {planGuid} during rollback");
+        }
+        catch (Exception ex)
+        {
+            Log($"Failed to reactivate power plan {planGuid} during rollback: {ex.Message}", "ERROR");
+        }
     }
 
     private static bool ShouldRefreshVisibilityMarker()
@@ -480,7 +555,7 @@ public sealed class PowerPlanService
             var root = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
             if (!string.IsNullOrWhiteSpace(root))
             {
-                return Path.Combine(root, "ParkToggle", "power-settings-visible.marker");
+                return Path.Combine(root, "CoolShift", "power-settings-visible.marker");
             }
         }
         catch
@@ -619,7 +694,7 @@ public sealed class PowerPlanService
             {
                 if (!_logInitialized || !File.Exists(_logPath))
                 {
-                    File.WriteAllText(_logPath, $"==== ParkToggle Log Started {DateTime.Now:G} ====\r\n", Encoding.UTF8);
+                    File.WriteAllText(_logPath, $"==== CoolShift Log Started {DateTime.Now:G} ====\r\n", Encoding.UTF8);
                     _logInitialized = true;
                 }
 

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
 
-namespace ParkToggleWpf;
+namespace CoolShift;
 
 public class AutomationOptions
 {

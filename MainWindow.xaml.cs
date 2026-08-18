@@ -11,8 +11,8 @@ using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using ParkToggleWpf.Monitoring;
-using ParkToggleWpf.ViewModels;
+using CoolShift.Monitoring;
+using CoolShift.ViewModels;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Controls;
@@ -23,7 +23,7 @@ using System.Windows.Threading;
 using NHotkey;
 using NHotkey.Wpf;
 
-namespace ParkToggleWpf;
+namespace CoolShift;
 
 public partial class MainWindow : Window, INotifyPropertyChanged
 {
@@ -68,6 +68,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         if (Environment.GetCommandLineArgs().Contains("--hidden"))
         {
+            TrayIcon.ForceCreate();
             Hide();
             ShowInTaskbar = false;
             WindowState = WindowState.Minimized;
@@ -273,7 +274,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _monitoringRepository = new MonitoringRepository(_monitoringOptions);
             await LoadSensorSelectionPreferencesAsync().ConfigureAwait(false);
             _hardwareMonitorService = new HardwareMonitorService();
-            _monitoringManager = new MonitoringManager(_hardwareMonitorService, _monitoringRepository, _monitoringOptions);
+            _monitoringManager = new MonitoringManager(_hardwareMonitorService, _monitoringOptions);
             _monitoringManager.SampleCaptured += OnMonitoringSampleCaptured;
             _monitoringManager.Start();
             _monitoringInitialized = true;
