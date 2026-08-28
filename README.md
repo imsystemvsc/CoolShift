@@ -4,7 +4,7 @@
 
 **CoolShift** (formerly *Park Toggle*) is a modern, ultra-lightweight Windows desktop utility designed to dynamically manage CPU core parking, processor frequency scaling, power plan states, and live hardware sensor telemetry.
 
-By running silently in your system tray, **CoolShift** shifts your PC between an energy-efficient **Cool Idle** mode and a high-performance **Always On** mode when configured apps or detected games are running.
+By running silently in your system tray, **CoolShift** shifts your PC between an energy-efficient **Cool Idle** mode and a high-performance **Always On** mode when manually selected apps are running.
 
 <p align="center">
   <img src="Resources/screenshot.png" alt="CoolShift Dashboard Overview" width="850">
@@ -15,11 +15,8 @@ By running silently in your system tray, **CoolShift** shifts your PC between an
 ## ✨ Key Features
 
 ### ⚡ Smart Automation & Auto-Switching
-- **Manual App List (Priority)**: Select running apps or browse for executables that should immediately switch to Always On. Manual selections always take priority over automatic detection.
-- **Optional Game Detection**: Detects installed Steam, Epic Games, GOG, and Playnite games from their installation data. A game must have a visible top-level window and run continuously for five seconds before CoolShift switches modes.
-- **Safe Passive Monitoring**: Uses Windows process start/stop events when available, performs an initial scan at launch, and falls back to low-frequency polling if WMI is unavailable. CoolShift never injects into games, hooks graphics APIs, reads process memory, changes game files, installs drivers, or uses PresentMon.
-- **Ignored Applications**: Exclude individual executable names or paths. Launchers, crash reporters, uninstallers, redistributables, browsers, and CoolShift itself are excluded automatically.
-- **Cool Idle Restoration**: Returns to the selected Cool Idle tier ten seconds after all detected games have closed.
+- **Manual App List**: Select a running app or browse for an executable that should immediately switch to Always On.
+- **Manual Auto-Switching**: Checks the selected executable list every three seconds and returns to the selected Cool Idle tier after the selected app closes.
 - **Smart Battery Override**: Auto-detects AC vs. Battery power transitions to enforce power-saving states on battery.
 
 ### ❄️ Cool Idle Tier Presets
@@ -79,7 +76,7 @@ dotnet test CoolShift.sln -c Release
 
 1. Launch **`CoolShift.exe`**.
 2. Select your preferred **Cool Idle** preset tier (*MaxCool 85%*, *Balanced 99%*, or *Responsive 100%*).
-3. Switch to the **Automation** tab to manage included apps, enable automatic game detection if wanted, and add any ignored applications.
+3. Switch to the **Automation** tab to add or remove the apps that should switch modes.
 4. Enable **Start with Windows** for background auto-management.
 5. Hover over or right-click the system tray icon for live sensor telemetry and quick action tools.
 

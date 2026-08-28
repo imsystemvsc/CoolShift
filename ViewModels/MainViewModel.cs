@@ -43,8 +43,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
     
     public ObservableCollection<TargetExecutableViewModel> TargetExecutableViewModels { get; } = new();
 
-    public ObservableCollection<TargetExecutableViewModel> IgnoredApplicationViewModels { get; } = new();
-    
     public ObservableCollection<LogicalCoreViewModel> Cores { get; } = new();
 
     [ObservableProperty]
@@ -420,8 +418,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         AutomationSettings = AutomationSettingsManager.Load();
         SelectedCoolIdleTier = AutomationSettings.SelectedCoolIdleTier;
         _smartBatteryEnabled = AutomationSettings.SmartBatteryEnabled;
-        _automaticGameDetectionEnabled = AutomationSettings.AutomaticGameDetectionEnabled;
-
         _automationService = new AutomationService(_powerPlanService, AutomationSettings);
         _automationService.AutomationTriggered += (s, msg) => 
         {
@@ -434,8 +430,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _automationService.Start();
 
         SyncTargetExecutables();
-        SyncIgnoredApplications();
-
         // Start initial refresh
         _ = RefreshAsync();
         _cpuTimer.Start();
@@ -449,17 +443,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
         UpdateAutomationOptions(CreateAutomationOptions());
     }
 
-    [ObservableProperty]
-    private bool _automaticGameDetectionEnabled;
-
-    partial void OnAutomaticGameDetectionEnabledChanged(bool value) => UpdateAutomationOptions(CreateAutomationOptions());
-
     private AutomationOptions CreateAutomationOptions() => new()
     {
         SmartBatteryEnabled = SmartBatteryEnabled,
-        AutomaticGameDetectionEnabled = AutomaticGameDetectionEnabled,
         TargetExecutables = AutomationSettings.TargetExecutables.ToList(),
-        IgnoredApplications = AutomationSettings.IgnoredApplications.ToList(),
         SelectedCoolIdleTier = SelectedCoolIdleTier
     };
 
@@ -470,7 +457,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(AutomationSettings));
         _automationService?.UpdateOptions(AutomationSettings);
         SyncTargetExecutables();
-        SyncIgnoredApplications();
     }
 
     private void SyncTargetExecutables()
@@ -522,37 +508,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
             catch { }
 
             TargetExecutableViewModels.Add(vm);
-        }
-    }
-
-    private void SyncIgnoredApplications()
-    {
-        IgnoredApplicationViewModels.Clear();
-        foreach (var path in AutomationSettings.IgnoredApplications)
-        {
-            var vm = new TargetExecutableViewModel
-            {
-                FullPath = path,
-                DisplayName = System.IO.Path.GetFileName(path)
-            };
-
-            try
-            {
-                if (System.IO.File.Exists(path))
-                {
-                    using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
-                    if (icon is not null)
-                    {
-                        vm.Icon = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
-                            icon.Handle,
-                            System.Windows.Int32Rect.Empty,
-                            System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
-                    }
-                }
-            }
-            catch { }
-
-            IgnoredApplicationViewModels.Add(vm);
         }
     }
 
@@ -608,49 +563,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
             newSettings.TargetExecutables.Remove(existing);
             UpdateAutomationOptions(newSettings);
         }
-    }
-
-    [RelayCommand]
-    public void AddIgnoredApplication()
-    {
-        var dialog = new Microsoft.Win32.OpenFileDialog
-        {
-            Filter = "Executables (*.exe)|*.exe",
-            Title = "Select Application to Ignore"
-        };
-
-        if (dialog.ShowDialog() == true)
-            AddIgnoredApplicationPath(dialog.FileName);
-    }
-
-    [RelayCommand]
-    public void AddRunningIgnoredApplication()
-    {
-        var dialog = new ProcessPickerDialog { Owner = System.Windows.Application.Current.MainWindow };
-        if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.SelectedExecutable))
-            AddIgnoredApplicationPath(dialog.SelectedExecutable);
-    }
-
-    [RelayCommand]
-    public void RemoveIgnoredApplication(TargetExecutableViewModel vm)
-    {
-        if (vm is null) return;
-        var existing = AutomationSettings.IgnoredApplications.FirstOrDefault(path =>
-            string.Equals(path, vm.FullPath, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(System.IO.Path.GetFileName(path), System.IO.Path.GetFileName(vm.FullPath), StringComparison.OrdinalIgnoreCase));
-        if (existing is null) return;
-
-        var newSettings = CreateAutomationOptions();
-        newSettings.IgnoredApplications.Remove(existing);
-        UpdateAutomationOptions(newSettings);
-    }
-
-    private void AddIgnoredApplicationPath(string path)
-    {
-        if (AutomationSettings.IgnoredApplications.Any(existing => string.Equals(existing, path, StringComparison.OrdinalIgnoreCase))) return;
-        var newSettings = CreateAutomationOptions();
-        newSettings.IgnoredApplications.Add(path);
-        UpdateAutomationOptions(newSettings);
     }
 
     [RelayCommand]

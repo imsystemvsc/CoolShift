@@ -34,6 +34,5 @@
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
     <PackageReference Include="NHotkey.Wpf" Version="4.0.0" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.10" />
-    <PackageReference Include="System.Management" Version="9.0.0" />
   </ItemGroup>
 </Project>

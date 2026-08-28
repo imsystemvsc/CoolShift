@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Management;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
@@ -12,9 +11,7 @@ namespace CoolShift;
 public class AutomationOptions
 {
     public bool SmartBatteryEnabled { get; set; } = true;
-    public bool AutomaticGameDetectionEnabled { get; set; }
     public List<string> TargetExecutables { get; set; } = new();
-    public List<string> IgnoredApplications { get; set; } = new();
     public CoolIdleTier SelectedCoolIdleTier { get; set; } = CoolIdleTier.Balanced;
 }
 
@@ -23,14 +20,10 @@ public class AutomationService : IAsyncDisposable, IDisposable
     private readonly PowerPlanService _powerPlanService;
     private readonly CancellationTokenSource _cts = new();
     private readonly SemaphoreSlim _evaluationLock = new(1, 1);
-    private readonly GameActivationTracker _activationTracker = new();
     private AutomationOptions _options;
     private Task? _loopTask;
-    private ManagementEventWatcher? _processStartWatcher;
-    private ManagementEventWatcher? _processStopWatcher;
-    private GameInstallationCatalog? _gameCatalog;
     private bool _isCurrentlyOnBattery;
-    private bool _wmiMonitoringAvailable;
+    private bool _wasRunningTargetProcess;
 
     public string? ActiveTargetName { get; private set; }
     public string? BasePlanGuid { get; set; }
@@ -47,16 +40,13 @@ public class AutomationService : IAsyncDisposable, IDisposable
     public void Start()
     {
         if (_loopTask is not null) return;
-        StartProcessWatchers();
         _loopTask = Task.Run(() => RunAsync(_cts.Token));
         _ = TriggerEvaluationAsync();
-        _ = TriggerAfterActivationDelayAsync();
     }
 
     public void UpdateOptions(AutomationOptions options)
     {
         _options = options;
-        if (options.AutomaticGameDetectionEnabled && _gameCatalog is null) _gameCatalog = GameInstallationCatalog.Load();
         _ = TriggerEvaluationAsync();
     }
 
@@ -64,7 +54,11 @@ public class AutomationService : IAsyncDisposable, IDisposable
     {
         try { await EvaluateConditionsAsync(_cts.Token); }
         catch (OperationCanceledException) { }
-        catch (Exception ex) { Trace.WriteLine($"Automation evaluation error: {ex}"); }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"Automation evaluation error: {ex}");
+            _powerPlanService.Log($"Automation evaluation error: {ex.Message}", "ERROR");
+        }
     }
 
     private async Task RunAsync(CancellationToken token)
@@ -72,7 +66,7 @@ public class AutomationService : IAsyncDisposable, IDisposable
         while (!token.IsCancellationRequested)
         {
             await TriggerEvaluationAsync();
-            try { await Task.Delay(_wmiMonitoringAvailable ? TimeSpan.FromSeconds(30) : TimeSpan.FromSeconds(15), token); }
+            try { await Task.Delay(TimeSpan.FromSeconds(3), token); }
             catch (OperationCanceledException) { break; }
         }
     }
@@ -86,32 +80,34 @@ public class AutomationService : IAsyncDisposable, IDisposable
 
             if (_options.SmartBatteryEnabled && _isCurrentlyOnBattery)
             {
-                _activationTracker.Reset();
                 ActiveTargetName = null;
+                _wasRunningTargetProcess = false;
                 await SwitchToCoolIdleAsync("Battery Auto-Switch", "Battery Detected", token);
                 return;
             }
 
             var manual = FindManualTargetProcess();
-            var automatic = manual is null && _options.AutomaticGameDetectionEnabled ? FindAutomaticGameProcess() : null;
-            var action = _activationTracker.Update(DateTimeOffset.UtcNow, manual, automatic, _isCurrentlyOnBattery);
-            ActiveTargetName = _activationTracker.ActiveGameName ?? manual?.Name ?? automatic?.Name;
-
-            if (action == GameAutomationAction.ActivateAlwaysOn)
+            if (manual is not null)
             {
-                var snapshot = await _powerPlanService.GetModeSnapshotAsync(BasePlanGuid, token);
-                if (snapshot.Mode != ParkMode.AlwaysOn)
+                if (!_wasRunningTargetProcess || ActiveTargetName is null)
                 {
-                    await _powerPlanService.SetModeAsync(BasePlanGuid, "Game Auto-Switch", ParkMode.AlwaysOn, _options.SelectedCoolIdleTier, token);
-                    var message = $"Switched to Always-On (Detected: {ActiveTargetName})";
-                    AutomationTriggered?.Invoke(this, message);
-                    _powerPlanService.Log($"Automation triggered: {message}");
+                    var snapshot = await _powerPlanService.GetModeSnapshotAsync(BasePlanGuid, token);
+                    if (snapshot.Mode != ParkMode.AlwaysOn)
+                    {
+                        await _powerPlanService.SetModeAsync(BasePlanGuid, "Game Auto-Switch", ParkMode.AlwaysOn, _options.SelectedCoolIdleTier, token);
+                        var message = $"Switched to Always-On (Detected: {manual})";
+                        AutomationTriggered?.Invoke(this, message);
+                        _powerPlanService.Log($"Automation triggered: {message}");
+                    }
+                    ActiveTargetName = manual;
+                    _wasRunningTargetProcess = true;
                 }
             }
-            else if (action == GameAutomationAction.RestoreCoolIdle)
+            else if (_wasRunningTargetProcess || ActiveTargetName is not null)
             {
-                await SwitchToCoolIdleAsync("Game Auto-Switch", "All detected games closed", token);
+                await SwitchToCoolIdleAsync("Game Auto-Switch", "Selected app closed", token);
                 ActiveTargetName = null;
+                _wasRunningTargetProcess = false;
             }
         }
         finally { _evaluationLock.Release(); }
@@ -127,7 +123,7 @@ public class AutomationService : IAsyncDisposable, IDisposable
         _powerPlanService.Log($"Automation triggered: {message}");
     }
 
-    private DetectedGame? FindManualTargetProcess()
+    private string? FindManualTargetProcess()
     {
         if (_options.TargetExecutables.Count == 0) return null;
         var targets = new HashSet<string>(_options.TargetExecutables.Select(t => System.IO.Path.GetFileNameWithoutExtension(t.Trim('"', ' '))), StringComparer.OrdinalIgnoreCase);
@@ -137,67 +133,12 @@ public class AutomationService : IAsyncDisposable, IDisposable
             {
                 try
                 {
-                    if (targets.Contains(process.ProcessName)) return new DetectedGame(process.Id.ToString(), System.IO.Path.GetFileName(process.MainModule?.FileName ?? process.ProcessName + ".exe"), true);
+                    if (targets.Contains(process.ProcessName)) return process.ProcessName + ".exe";
                 }
                 catch { }
             }
         }
         return null;
-    }
-
-    private DetectedGame? FindAutomaticGameProcess()
-    {
-        _gameCatalog ??= GameInstallationCatalog.Load();
-        foreach (var process in Process.GetProcesses())
-        {
-            using (process)
-            {
-                try
-                {
-                    if (process.Id == Environment.ProcessId || process.MainWindowHandle == IntPtr.Zero) continue;
-                    var path = process.MainModule?.FileName;
-                    if (path is not null && _gameCatalog.IsGameExecutable(path, _options.IgnoredApplications)) return new DetectedGame(process.Id.ToString(), System.IO.Path.GetFileNameWithoutExtension(path), false);
-                }
-                catch { }
-            }
-        }
-        return null;
-    }
-
-    private void StartProcessWatchers()
-    {
-        try
-        {
-            _processStartWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT * FROM Win32_ProcessStartTrace"));
-            _processStopWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT * FROM Win32_ProcessStopTrace"));
-            _processStartWatcher.EventArrived += OnProcessEventArrived;
-            _processStopWatcher.EventArrived += OnProcessEventArrived;
-            _processStartWatcher.Start();
-            _processStopWatcher.Start();
-            _wmiMonitoringAvailable = true;
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"WMI process monitoring unavailable; using polling fallback: {ex.Message}");
-            DisposeProcessWatchers();
-            _wmiMonitoringAvailable = false;
-        }
-    }
-
-    private void OnProcessEventArrived(object sender, EventArrivedEventArgs e)
-    {
-        _ = TriggerEvaluationAsync();
-        _ = TriggerAfterActivationDelayAsync();
-    }
-
-    private async Task TriggerAfterActivationDelayAsync()
-    {
-        try
-        {
-            await Task.Delay(TimeSpan.FromSeconds(5), _cts.Token);
-            await TriggerEvaluationAsync();
-        }
-        catch (OperationCanceledException) { }
     }
 
     private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e) { CheckBatteryStatus(); _ = TriggerEvaluationAsync(); }
@@ -214,21 +155,9 @@ public class AutomationService : IAsyncDisposable, IDisposable
     public async ValueTask DisposeAsync()
     {
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
-        DisposeProcessWatchers();
         await StopAsync();
         _evaluationLock.Dispose();
         _cts.Dispose();
     }
 
-    private void DisposeProcessWatchers()
-    {
-        foreach (var watcher in new[] { _processStartWatcher, _processStopWatcher })
-        {
-            if (watcher is null) continue;
-            try { watcher.Stop(); } catch { }
-            watcher.Dispose();
-        }
-        _processStartWatcher = null;
-        _processStopWatcher = null;
-    }
 }
