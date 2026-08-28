@@ -919,6 +919,8 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <Grid Grid.Row="0">
@@ -1118,13 +1120,14 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <!-- Smart Battery Toggle -->
                                 <StackPanel Grid.Row="0" Margin="0,0,0,24">
                                     <TextBlock Text="SMART BATTERY DETECTION" FontFamily="Bahnschrift" Foreground="{StaticResource ForegroundBrush}" FontSize="16" Margin="0,0,0,4" />
                                     <TextBlock Text="Automatically forces 'Cool Idle' when unplugged, ignoring games." Foreground="{StaticResource MutedBrush}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,12" />
-                                    <CheckBox Content="Enable Smart Battery Override" IsChecked="{Binding ViewModel.AutomationSettings.SmartBatteryEnabled}" Foreground="{StaticResource ForegroundBrush}" ToolTip="Automatically enforce Cool Idle mode when running on battery power to conserve battery life." />
+                                    <CheckBox Content="Enable Smart Battery Override" IsChecked="{Binding ViewModel.SmartBatteryEnabled}" Foreground="{StaticResource ForegroundBrush}" ToolTip="Automatically enforce Cool Idle mode when running on battery power to conserve battery life." />
                                 </StackPanel>
 
                                 <!-- Game Auto-Switching -->
@@ -1137,9 +1140,10 @@
                                     <StackPanel>
                                         <TextBlock Text="GAME AUTO-SWITCHING" FontFamily="Bahnschrift" Foreground="{StaticResource ForegroundBrush}" FontSize="16" Margin="0,0,0,4" />
                                         <TextBlock Text="Forces 'Always-On' when these apps are running." Foreground="{StaticResource MutedBrush}" FontSize="13" TextWrapping="Wrap" />
+                                        <CheckBox Content="Automatically detect running games" IsChecked="{Binding ViewModel.AutomaticGameDetectionEnabled}" Foreground="{StaticResource ForegroundBrush}" Margin="0,12,0,0" ToolTip="Detect installed Steam, Epic, GOG, and Playnite games with visible windows after five seconds." />
                                     </StackPanel>
-                                    <Button Grid.Column="1" Content="Pick Running..." Command="{Binding ViewModel.AddRunningGameCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="16 8" Margin="0 0 10 0" ToolTip="Select from currently running background applications and games." />
-                                    <Button Grid.Column="2" Content="Browse..." Command="{Binding ViewModel.AddGameExecutableCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="16 8" ToolTip="Manually select an executable file (.exe) from your file system." />
+                                    <Button Grid.Column="1" Content="Pick Running..." Command="{Binding ViewModel.AddRunningGameCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="16 8" Margin="0 0 10 0" VerticalAlignment="Center" ToolTip="Select from currently running background applications and games." />
+                                    <Button Grid.Column="2" Content="Browse..." Command="{Binding ViewModel.AddGameExecutableCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="16 8" VerticalAlignment="Center" ToolTip="Manually select an executable file (.exe) from your file system." />
                                 </Grid>
 
                                 <!-- Configured Games List -->
@@ -1172,7 +1176,42 @@
                                             </DataTemplate>
                                         </ListView.ItemTemplate>
                                     </ListView>
-                                </Border>
+                                  </Border>
+                                  <Grid Grid.Row="3" Margin="0,16,0,0">
+                                      <Grid.RowDefinitions>
+                                          <RowDefinition Height="Auto" />
+                                          <RowDefinition Height="Auto" />
+                                      </Grid.RowDefinitions>
+                                      <Grid.ColumnDefinitions>
+                                          <ColumnDefinition Width="*" />
+                                          <ColumnDefinition Width="Auto" />
+                                          <ColumnDefinition Width="Auto" />
+                                      </Grid.ColumnDefinitions>
+                                      <StackPanel Grid.Row="0" Grid.Column="0">
+                                          <TextBlock Text="IGNORED APPLICATIONS" FontFamily="Bahnschrift" Foreground="{StaticResource ForegroundBrush}" FontSize="16" Margin="0,0,0,4" />
+                                          <TextBlock Text="Excluded from automatic detection." Foreground="{StaticResource MutedBrush}" FontSize="13" TextWrapping="Wrap" />
+                                      </StackPanel>
+                                      <Button Grid.Row="0" Grid.Column="1" Content="Pick Running..." Command="{Binding ViewModel.AddRunningIgnoredApplicationCommand}" Style="{StaticResource SecondaryButtonStyle}" Padding="16,8" Margin="0,0,10,0" ToolTip="Choose a running application to exclude from automatic detection." />
+                                      <Button Grid.Row="0" Grid.Column="2" Content="Browse..." Command="{Binding ViewModel.AddIgnoredApplicationCommand}" Style="{StaticResource PrimaryButtonStyle}" Padding="16,8" ToolTip="Choose an executable to exclude from automatic detection." />
+                                      <Border Grid.Row="1" Grid.ColumnSpan="3" Background="#1C1C1C" BorderBrush="#333333" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,12,0,0">
+                                          <ListView ItemsSource="{Binding ViewModel.IgnoredApplicationViewModels}" Background="Transparent" BorderThickness="0" Foreground="{StaticResource ForegroundBrush}" ItemContainerStyle="{StaticResource ListRowItemStyle}" MaxHeight="150">
+                                              <ListView.ItemTemplate>
+                                                  <DataTemplate>
+                                                      <Grid Margin="0,4">
+                                                          <Grid.ColumnDefinitions>
+                                                              <ColumnDefinition Width="Auto" />
+                                                              <ColumnDefinition Width="*" />
+                                                              <ColumnDefinition Width="Auto" />
+                                                          </Grid.ColumnDefinitions>
+                                                          <Image Source="{Binding Icon}" Width="16" Height="16" Margin="0,0,12,0" VerticalAlignment="Center" />
+                                                          <TextBlock Grid.Column="1" Text="{Binding DisplayName}" Foreground="{StaticResource ForegroundBrush}" FontSize="14" VerticalAlignment="Center" />
+                                                          <Button Grid.Column="2" Content="✕" Command="{Binding DataContext.ViewModel.RemoveIgnoredApplicationCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Background="Transparent" BorderThickness="0" Foreground="{StaticResource MutedBrush}" FontSize="16" Cursor="Hand" Padding="8,0" ToolTip="Remove exclusion" />
+                                                      </Grid>
+                                                  </DataTemplate>
+                                              </ListView.ItemTemplate>
+                                          </ListView>
+                                      </Border>
+                                  </Grid>
                             </Grid>
                         </Border>
                     </TabItem>

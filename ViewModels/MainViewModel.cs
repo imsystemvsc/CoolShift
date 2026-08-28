@@ -42,6 +42,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public AutomationOptions AutomationSettings { get; private set; } = new AutomationOptions();
     
     public ObservableCollection<TargetExecutableViewModel> TargetExecutableViewModels { get; } = new();
+
+    public ObservableCollection<TargetExecutableViewModel> IgnoredApplicationViewModels { get; } = new();
     
     public ObservableCollection<LogicalCoreViewModel> Cores { get; } = new();
 
@@ -418,6 +420,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         AutomationSettings = AutomationSettingsManager.Load();
         SelectedCoolIdleTier = AutomationSettings.SelectedCoolIdleTier;
         _smartBatteryEnabled = AutomationSettings.SmartBatteryEnabled;
+        _automaticGameDetectionEnabled = AutomationSettings.AutomaticGameDetectionEnabled;
 
         _automationService = new AutomationService(_powerPlanService, AutomationSettings);
         _automationService.AutomationTriggered += (s, msg) => 
@@ -431,6 +434,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _automationService.Start();
 
         SyncTargetExecutables();
+        SyncIgnoredApplications();
 
         // Start initial refresh
         _ = RefreshAsync();
@@ -442,14 +446,22 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     partial void OnSmartBatteryEnabledChanged(bool value)
     {
-        var newSettings = new AutomationOptions
-        {
-            SmartBatteryEnabled = value,
-            TargetExecutables = AutomationSettings.TargetExecutables.ToList(),
-            SelectedCoolIdleTier = SelectedCoolIdleTier
-        };
-        UpdateAutomationOptions(newSettings);
+        UpdateAutomationOptions(CreateAutomationOptions());
     }
+
+    [ObservableProperty]
+    private bool _automaticGameDetectionEnabled;
+
+    partial void OnAutomaticGameDetectionEnabledChanged(bool value) => UpdateAutomationOptions(CreateAutomationOptions());
+
+    private AutomationOptions CreateAutomationOptions() => new()
+    {
+        SmartBatteryEnabled = SmartBatteryEnabled,
+        AutomaticGameDetectionEnabled = AutomaticGameDetectionEnabled,
+        TargetExecutables = AutomationSettings.TargetExecutables.ToList(),
+        IgnoredApplications = AutomationSettings.IgnoredApplications.ToList(),
+        SelectedCoolIdleTier = SelectedCoolIdleTier
+    };
 
     public void UpdateAutomationOptions(AutomationOptions newSettings)
     {
@@ -458,6 +470,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(AutomationSettings));
         _automationService?.UpdateOptions(AutomationSettings);
         SyncTargetExecutables();
+        SyncIgnoredApplications();
     }
 
     private void SyncTargetExecutables()
@@ -512,6 +525,37 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    private void SyncIgnoredApplications()
+    {
+        IgnoredApplicationViewModels.Clear();
+        foreach (var path in AutomationSettings.IgnoredApplications)
+        {
+            var vm = new TargetExecutableViewModel
+            {
+                FullPath = path,
+                DisplayName = System.IO.Path.GetFileName(path)
+            };
+
+            try
+            {
+                if (System.IO.File.Exists(path))
+                {
+                    using var icon = System.Drawing.Icon.ExtractAssociatedIcon(path);
+                    if (icon is not null)
+                    {
+                        vm.Icon = System.Windows.Interop.Imaging.CreateBitmapSourceFromHIcon(
+                            icon.Handle,
+                            System.Windows.Int32Rect.Empty,
+                            System.Windows.Media.Imaging.BitmapSizeOptions.FromEmptyOptions());
+                    }
+                }
+            }
+            catch { }
+
+            IgnoredApplicationViewModels.Add(vm);
+        }
+    }
+
     [RelayCommand]
     public void AddGameExecutable()
     {
@@ -527,12 +571,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             string exeName = System.IO.Path.GetFileName(fileName);
             if (!AutomationSettings.TargetExecutables.Any(t => string.Equals(System.IO.Path.GetFileName(t), exeName, StringComparison.OrdinalIgnoreCase)))
             {
-                var newSettings = new AutomationOptions
-                {
-                    SmartBatteryEnabled = SmartBatteryEnabled,
-                    TargetExecutables = AutomationSettings.TargetExecutables.ToList(),
-                    SelectedCoolIdleTier = SelectedCoolIdleTier
-                };
+                var newSettings = CreateAutomationOptions();
                 newSettings.TargetExecutables.Add(fileName);
                 UpdateAutomationOptions(newSettings);
             }
@@ -550,12 +589,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             string exeName = System.IO.Path.GetFileName(dialog.SelectedExecutable);
             if (!AutomationSettings.TargetExecutables.Any(t => string.Equals(System.IO.Path.GetFileName(t), exeName, StringComparison.OrdinalIgnoreCase)))
             {
-                var newSettings = new AutomationOptions
-                {
-                    SmartBatteryEnabled = SmartBatteryEnabled,
-                    TargetExecutables = AutomationSettings.TargetExecutables.ToList(),
-                    SelectedCoolIdleTier = SelectedCoolIdleTier
-                };
+                var newSettings = CreateAutomationOptions();
                 newSettings.TargetExecutables.Add(dialog.SelectedExecutable);
                 UpdateAutomationOptions(newSettings);
             }
@@ -570,15 +604,53 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var existing = AutomationSettings.TargetExecutables.FirstOrDefault(t => string.Equals(t, fileName, StringComparison.OrdinalIgnoreCase) || string.Equals(System.IO.Path.GetFileName(t), System.IO.Path.GetFileName(fileName), StringComparison.OrdinalIgnoreCase));
         if (existing != null)
         {
-            var newSettings = new AutomationOptions
-            {
-                SmartBatteryEnabled = SmartBatteryEnabled,
-                TargetExecutables = AutomationSettings.TargetExecutables.ToList(),
-                SelectedCoolIdleTier = SelectedCoolIdleTier
-            };
+            var newSettings = CreateAutomationOptions();
             newSettings.TargetExecutables.Remove(existing);
             UpdateAutomationOptions(newSettings);
         }
+    }
+
+    [RelayCommand]
+    public void AddIgnoredApplication()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Filter = "Executables (*.exe)|*.exe",
+            Title = "Select Application to Ignore"
+        };
+
+        if (dialog.ShowDialog() == true)
+            AddIgnoredApplicationPath(dialog.FileName);
+    }
+
+    [RelayCommand]
+    public void AddRunningIgnoredApplication()
+    {
+        var dialog = new ProcessPickerDialog { Owner = System.Windows.Application.Current.MainWindow };
+        if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.SelectedExecutable))
+            AddIgnoredApplicationPath(dialog.SelectedExecutable);
+    }
+
+    [RelayCommand]
+    public void RemoveIgnoredApplication(TargetExecutableViewModel vm)
+    {
+        if (vm is null) return;
+        var existing = AutomationSettings.IgnoredApplications.FirstOrDefault(path =>
+            string.Equals(path, vm.FullPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(System.IO.Path.GetFileName(path), System.IO.Path.GetFileName(vm.FullPath), StringComparison.OrdinalIgnoreCase));
+        if (existing is null) return;
+
+        var newSettings = CreateAutomationOptions();
+        newSettings.IgnoredApplications.Remove(existing);
+        UpdateAutomationOptions(newSettings);
+    }
+
+    private void AddIgnoredApplicationPath(string path)
+    {
+        if (AutomationSettings.IgnoredApplications.Any(existing => string.Equals(existing, path, StringComparison.OrdinalIgnoreCase))) return;
+        var newSettings = CreateAutomationOptions();
+        newSettings.IgnoredApplications.Add(path);
+        UpdateAutomationOptions(newSettings);
     }
 
     [RelayCommand]
@@ -619,12 +691,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         if (!Enum.TryParse<CoolIdleTier>(tierName, true, out var tier)) return;
         SelectedCoolIdleTier = tier;
 
-        var newSettings = new AutomationOptions
-        {
-            SmartBatteryEnabled = SmartBatteryEnabled,
-            TargetExecutables = AutomationSettings.TargetExecutables.ToList(),
-            SelectedCoolIdleTier = tier
-        };
+        var newSettings = CreateAutomationOptions();
+        newSettings.SelectedCoolIdleTier = tier;
         UpdateAutomationOptions(newSettings);
 
         if (CurrentMode == ParkMode.CoolIdle && SelectedPlan != null && !IsBusy)

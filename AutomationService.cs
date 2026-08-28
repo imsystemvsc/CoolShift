@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Management;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
 using Microsoft.Win32;
 
 namespace CoolShift;
@@ -12,24 +12,28 @@ namespace CoolShift;
 public class AutomationOptions
 {
     public bool SmartBatteryEnabled { get; set; } = true;
+    public bool AutomaticGameDetectionEnabled { get; set; }
     public List<string> TargetExecutables { get; set; } = new();
+    public List<string> IgnoredApplications { get; set; } = new();
     public CoolIdleTier SelectedCoolIdleTier { get; set; } = CoolIdleTier.Balanced;
 }
 
 public class AutomationService : IAsyncDisposable, IDisposable
 {
     private readonly PowerPlanService _powerPlanService;
-    private AutomationOptions _options;
     private readonly CancellationTokenSource _cts = new();
+    private readonly SemaphoreSlim _evaluationLock = new(1, 1);
+    private readonly GameActivationTracker _activationTracker = new();
+    private AutomationOptions _options;
     private Task? _loopTask;
+    private ManagementEventWatcher? _processStartWatcher;
+    private ManagementEventWatcher? _processStopWatcher;
+    private GameInstallationCatalog? _gameCatalog;
     private bool _isCurrentlyOnBattery;
-    private bool _wasRunningTargetProcess;
-    
-    public string? ActiveTargetName { get; private set; }
-    
-    // Store the guid of the plan that we should fallback to when automation switches off.
-    public string? BasePlanGuid { get; set; }
+    private bool _wmiMonitoringAvailable;
 
+    public string? ActiveTargetName { get; private set; }
+    public string? BasePlanGuid { get; set; }
     public event EventHandler<string>? AutomationTriggered;
 
     public AutomationService(PowerPlanService powerPlanService, AutomationOptions options)
@@ -40,186 +44,191 @@ public class AutomationService : IAsyncDisposable, IDisposable
         CheckBatteryStatus();
     }
 
-    private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
-    {
-        CheckBatteryStatus();
-    }
-
-    private void CheckBatteryStatus()
-    {
-        _isCurrentlyOnBattery = System.Windows.Forms.SystemInformation.PowerStatus.PowerLineStatus == System.Windows.Forms.PowerLineStatus.Offline;
-    }
-
     public void Start()
     {
-        if (_loopTask is not null)
-            return;
-
+        if (_loopTask is not null) return;
+        StartProcessWatchers();
         _loopTask = Task.Run(() => RunAsync(_cts.Token));
+        _ = TriggerEvaluationAsync();
+        _ = TriggerAfterActivationDelayAsync();
+    }
+
+    public void UpdateOptions(AutomationOptions options)
+    {
+        _options = options;
+        if (options.AutomaticGameDetectionEnabled && _gameCatalog is null) _gameCatalog = GameInstallationCatalog.Load();
+        _ = TriggerEvaluationAsync();
+    }
+
+    public async Task TriggerEvaluationAsync()
+    {
+        try { await EvaluateConditionsAsync(_cts.Token); }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { Trace.WriteLine($"Automation evaluation error: {ex}"); }
     }
 
     private async Task RunAsync(CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {
-            try
-            {
-                await EvaluateConditionsAsync(token);
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"Automation error: {ex}");
-            }
-
-            try
-            {
-                await Task.Delay(TimeSpan.FromSeconds(3), token); // Check every 3 seconds
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
-        }
-    }
-
-    public void UpdateOptions(AutomationOptions options)
-    {
-        _options = options;
-        _ = TriggerEvaluationAsync();
-    }
-
-    public async Task TriggerEvaluationAsync()
-    {
-        try
-        {
-            await EvaluateConditionsAsync(_cts.Token);
-        }
-        catch (Exception ex)
-        {
-            Trace.WriteLine($"Automation evaluation error: {ex}");
+            await TriggerEvaluationAsync();
+            try { await Task.Delay(_wmiMonitoringAvailable ? TimeSpan.FromSeconds(30) : TimeSpan.FromSeconds(15), token); }
+            catch (OperationCanceledException) { break; }
         }
     }
 
     private async Task EvaluateConditionsAsync(CancellationToken token)
     {
-        if (BasePlanGuid is null)
+        await _evaluationLock.WaitAsync(token);
+        try
         {
-            // We need a known base plan to operate.
-            var active = await _powerPlanService.GetActivePlanAsync(token);
-            BasePlanGuid = active.Guid;
-        }
+            if (BasePlanGuid is null) BasePlanGuid = (await _powerPlanService.GetActivePlanAsync(token)).Guid;
 
-        // Priority 1: Smart Battery (Forces Cool Idle)
-        if (_options.SmartBatteryEnabled && _isCurrentlyOnBattery)
-        {
-            var snapshot = await _powerPlanService.GetModeSnapshotAsync(BasePlanGuid, token);
-            if (snapshot.Mode != ParkMode.CoolIdle)
+            if (_options.SmartBatteryEnabled && _isCurrentlyOnBattery)
             {
-                await _powerPlanService.SetModeAsync(BasePlanGuid, "Battery Auto-Switch", ParkMode.CoolIdle, _options.SelectedCoolIdleTier, token);
-                ActiveTargetName = "Battery Saver";
-                AutomationTriggered?.Invoke(this, $"Switched to Cool Idle [{PowerPlanService.TierToDisplay(_options.SelectedCoolIdleTier)}] (Battery Detected)");
-                _powerPlanService.Log($"Automation triggered: Switched to Cool Idle [{PowerPlanService.TierToDisplay(_options.SelectedCoolIdleTier)}] (Battery Detected)");
-                _wasRunningTargetProcess = false; // Reset state
+                _activationTracker.Reset();
+                ActiveTargetName = null;
+                await SwitchToCoolIdleAsync("Battery Auto-Switch", "Battery Detected", token);
+                return;
             }
-            return;
-        }
 
-        // Priority 2: Target Processes (Forces AlwaysOn)
-        bool isTargetRunning = IsAnyTargetProcessRunning();
-        
-        if (isTargetRunning)
-        {
-            if (!_wasRunningTargetProcess || ActiveTargetName == null)
+            var manual = FindManualTargetProcess();
+            var automatic = manual is null && _options.AutomaticGameDetectionEnabled ? FindAutomaticGameProcess() : null;
+            var action = _activationTracker.Update(DateTimeOffset.UtcNow, manual, automatic, _isCurrentlyOnBattery);
+            ActiveTargetName = _activationTracker.ActiveGameName ?? manual?.Name ?? automatic?.Name;
+
+            if (action == GameAutomationAction.ActivateAlwaysOn)
             {
                 var snapshot = await _powerPlanService.GetModeSnapshotAsync(BasePlanGuid, token);
                 if (snapshot.Mode != ParkMode.AlwaysOn)
                 {
                     await _powerPlanService.SetModeAsync(BasePlanGuid, "Game Auto-Switch", ParkMode.AlwaysOn, _options.SelectedCoolIdleTier, token);
-                    AutomationTriggered?.Invoke(this, $"Switched to Always-On (Detected: {ActiveTargetName})");
-                    _powerPlanService.Log($"Automation triggered: Switched to Always-On (Detected: {ActiveTargetName})");
+                    var message = $"Switched to Always-On (Detected: {ActiveTargetName})";
+                    AutomationTriggered?.Invoke(this, message);
+                    _powerPlanService.Log($"Automation triggered: {message}");
                 }
-                _wasRunningTargetProcess = true;
             }
-        }
-        else
-        {
-            if (_wasRunningTargetProcess || ActiveTargetName != null)
+            else if (action == GameAutomationAction.RestoreCoolIdle)
             {
-                var snapshot = await _powerPlanService.GetModeSnapshotAsync(BasePlanGuid, token);
-                if (snapshot.Mode != ParkMode.CoolIdle)
-                {
-                    await _powerPlanService.SetModeAsync(BasePlanGuid, "Game Auto-Switch", ParkMode.CoolIdle, _options.SelectedCoolIdleTier, token);
-                    AutomationTriggered?.Invoke(this, $"Switched to Cool Idle [{PowerPlanService.TierToDisplay(_options.SelectedCoolIdleTier)}] (Game Closed/Removed)");
-                    _powerPlanService.Log($"Automation triggered: Switched to Cool Idle [{PowerPlanService.TierToDisplay(_options.SelectedCoolIdleTier)}] (Game Closed/Removed)");
-                }
+                await SwitchToCoolIdleAsync("Game Auto-Switch", "All detected games closed", token);
                 ActiveTargetName = null;
-                _wasRunningTargetProcess = false;
             }
         }
+        finally { _evaluationLock.Release(); }
     }
 
-    private bool IsAnyTargetProcessRunning()
+    private async Task SwitchToCoolIdleAsync(string planName, string reason, CancellationToken token)
     {
-        if (_options.TargetExecutables.Count == 0)
-            return false;
+        var snapshot = await _powerPlanService.GetModeSnapshotAsync(BasePlanGuid!, token);
+        if (snapshot.Mode == ParkMode.CoolIdle) return;
+        await _powerPlanService.SetModeAsync(BasePlanGuid!, planName, ParkMode.CoolIdle, _options.SelectedCoolIdleTier, token);
+        var message = $"Switched to Cool Idle [{PowerPlanService.TierToDisplay(_options.SelectedCoolIdleTier)}] ({reason})";
+        AutomationTriggered?.Invoke(this, message);
+        _powerPlanService.Log($"Automation triggered: {message}");
+    }
 
-        var runningProcesses = Process.GetProcesses();
-        
-        foreach (var proc in runningProcesses)
+    private DetectedGame? FindManualTargetProcess()
+    {
+        if (_options.TargetExecutables.Count == 0) return null;
+        var targets = new HashSet<string>(_options.TargetExecutables.Select(t => System.IO.Path.GetFileNameWithoutExtension(t.Trim('"', ' '))), StringComparer.OrdinalIgnoreCase);
+        foreach (var process in Process.GetProcesses())
         {
-            try
+            using (process)
             {
-                string procName = proc.ProcessName; // Does not include .exe
-                
-                foreach (var target in _options.TargetExecutables)
+                try
                 {
-                    string cleanTarget = System.IO.Path.GetFileNameWithoutExtension(target.Trim('"', ' ')).ToLowerInvariant();
-                    if (string.Equals(procName, cleanTarget, StringComparison.OrdinalIgnoreCase))
-                    {
-                        ActiveTargetName = System.IO.Path.GetFileName(target);
-                        return true;
-                    }
+                    if (targets.Contains(process.ProcessName)) return new DetectedGame(process.Id.ToString(), System.IO.Path.GetFileName(process.MainModule?.FileName ?? process.ProcessName + ".exe"), true);
                 }
-            }
-            catch
-            {
-                // Access denied or process exited.
-            }
-            finally
-            {
-                proc.Dispose(); // Keep things clean
+                catch { }
             }
         }
-        return false;
+        return null;
     }
+
+    private DetectedGame? FindAutomaticGameProcess()
+    {
+        _gameCatalog ??= GameInstallationCatalog.Load();
+        foreach (var process in Process.GetProcesses())
+        {
+            using (process)
+            {
+                try
+                {
+                    if (process.Id == Environment.ProcessId || process.MainWindowHandle == IntPtr.Zero) continue;
+                    var path = process.MainModule?.FileName;
+                    if (path is not null && _gameCatalog.IsGameExecutable(path, _options.IgnoredApplications)) return new DetectedGame(process.Id.ToString(), System.IO.Path.GetFileNameWithoutExtension(path), false);
+                }
+                catch { }
+            }
+        }
+        return null;
+    }
+
+    private void StartProcessWatchers()
+    {
+        try
+        {
+            _processStartWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT * FROM Win32_ProcessStartTrace"));
+            _processStopWatcher = new ManagementEventWatcher(new WqlEventQuery("SELECT * FROM Win32_ProcessStopTrace"));
+            _processStartWatcher.EventArrived += OnProcessEventArrived;
+            _processStopWatcher.EventArrived += OnProcessEventArrived;
+            _processStartWatcher.Start();
+            _processStopWatcher.Start();
+            _wmiMonitoringAvailable = true;
+        }
+        catch (Exception ex)
+        {
+            Trace.WriteLine($"WMI process monitoring unavailable; using polling fallback: {ex.Message}");
+            DisposeProcessWatchers();
+            _wmiMonitoringAvailable = false;
+        }
+    }
+
+    private void OnProcessEventArrived(object sender, EventArrivedEventArgs e)
+    {
+        _ = TriggerEvaluationAsync();
+        _ = TriggerAfterActivationDelayAsync();
+    }
+
+    private async Task TriggerAfterActivationDelayAsync()
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5), _cts.Token);
+            await TriggerEvaluationAsync();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e) { CheckBatteryStatus(); _ = TriggerEvaluationAsync(); }
+    private void CheckBatteryStatus() => _isCurrentlyOnBattery = System.Windows.Forms.SystemInformation.PowerStatus.PowerLineStatus == System.Windows.Forms.PowerLineStatus.Offline;
 
     public async Task StopAsync()
     {
-        if (_loopTask is null)
-            return;
-
+        if (_loopTask is null) return;
         _cts.Cancel();
-        try
-        {
-            await _loopTask;
-        }
-        catch (OperationCanceledException) { }
-        finally
-        {
-            _loopTask = null;
-        }
+        try { await _loopTask; } catch (OperationCanceledException) { } finally { _loopTask = null; }
     }
 
-    public void Dispose()
-    {
-        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
-        DisposeAsync().AsTask().GetAwaiter().GetResult();
-    }
-
+    public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
     public async ValueTask DisposeAsync()
     {
         SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+        DisposeProcessWatchers();
         await StopAsync();
+        _evaluationLock.Dispose();
         _cts.Dispose();
+    }
+
+    private void DisposeProcessWatchers()
+    {
+        foreach (var watcher in new[] { _processStartWatcher, _processStopWatcher })
+        {
+            if (watcher is null) continue;
+            try { watcher.Stop(); } catch { }
+            watcher.Dispose();
+        }
+        _processStartWatcher = null;
+        _processStopWatcher = null;
     }
 }

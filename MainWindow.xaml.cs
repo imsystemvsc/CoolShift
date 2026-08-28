@@ -42,10 +42,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private SensorSelectionViewModel? _draggedSensor;
     private bool _suppressPreferencePersistence;
     private bool _monitoringInitialized;
+    private bool _applicationInitialized;
 
     private static readonly TimeSpan BringToFrontDelay = TimeSpan.FromMilliseconds(120);
 
-    public MainViewModel ViewModel { get; }
+    public MainViewModel? ViewModel { get; private set; }
 
     public ObservableCollection<SensorSelectionViewModel> MonitoringSensors => _monitoringSensors;
 
@@ -62,11 +63,11 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     public MainWindow()
     {
         InitializeComponent();
-        ViewModel = new MainViewModel();
         DataContext = this;
         _monitoringSensors.CollectionChanged += MonitoringSensorsOnCollectionChanged;
 
-        if (Environment.GetCommandLineArgs().Contains("--hidden"))
+        var startHidden = Environment.GetCommandLineArgs().Contains("--hidden");
+        if (startHidden)
         {
             TrayIcon.ForceCreate();
             Hide();
@@ -75,7 +76,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _hasShownTrayTip = true; // prevent balloon tip on auto-start
         }
 
-        Loaded += OnLoaded;
+        if (startHidden)
+        {
+            _ = InitializeApplicationAsync();
+        }
+        else
+        {
+            ContentRendered += OnContentRendered;
+        }
+
         SourceInitialized += OnSourceInitialized;
         Closed += OnClosed;
         StateChanged += OnWindowStateChanged;
@@ -93,14 +102,28 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private async void OnToggleModeHotkey(object? sender, HotkeyEventArgs e)
     {
-        if (!ViewModel.IsBusy)
+        if (ViewModel is { IsBusy: false } viewModel)
         {
-            await ViewModel.ToggleModeAsync();
+            await viewModel.ToggleModeAsync();
         }
     }
 
-    private async void OnLoaded(object sender, RoutedEventArgs e)
+    private async void OnContentRendered(object? sender, EventArgs e)
     {
+        await InitializeApplicationAsync();
+    }
+
+    private async Task InitializeApplicationAsync()
+    {
+        if (_applicationInitialized)
+        {
+            return;
+        }
+
+        _applicationInitialized = true;
+        ViewModel = new MainViewModel();
+        OnPropertyChanged(nameof(ViewModel));
+
         await InitializeMonitoringAsync().ConfigureAwait(false);
         if (!Environment.GetCommandLineArgs().Contains("--hidden"))
         {
@@ -158,7 +181,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OnClosed(object? sender, EventArgs e)
     {
-        ViewModel.Dispose();
+        ViewModel?.Dispose();
 
         if (_monitoringManager is not null)
         {
