@@ -4,15 +4,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
+using Color = System.Windows.Media.Color;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-
-using LiveChartsCore;
-using LiveChartsCore.Defaults;
-using LiveChartsCore.SkiaSharpView;
-using LiveChartsCore.SkiaSharpView.Painting;
-using SkiaSharp;
 using Microsoft.Win32;
 using CoolShift.Monitoring;
 using CoolShift;
@@ -28,16 +24,31 @@ public class TargetExecutableViewModel
 
 public partial class MainViewModel : ObservableObject, IDisposable
 {
+    private static readonly SolidColorBrush LoadGreenBrush = new(Color.FromRgb(167, 196, 126));
+    private static readonly SolidColorBrush LoadYellowBrush = new(Color.FromRgb(240, 220, 100));
+    private static readonly SolidColorBrush LoadRedBrush = new(Color.FromRgb(240, 100, 100));
+
+    static MainViewModel()
+    {
+        LoadGreenBrush.Freeze();
+        LoadYellowBrush.Freeze();
+        LoadRedBrush.Freeze();
+    }
+
+    private static SolidColorBrush GetLoadBrush(double load)
+    {
+        if (load < 40) return LoadGreenBrush;
+        if (load < 75) return LoadYellowBrush;
+        return LoadRedBrush;
+    }
+
     private readonly PowerPlanService _powerPlanService;
     private readonly CoreParkingService _coreParkingService;
-    private CpuTemperatureService? _cpuTemperatureService;
+    internal HardwareMonitorService HardwareMonitorService { get; }
     private readonly DispatcherTimer _cpuTimer;
     private readonly AutomationService _automationService;
-    private readonly ObservableCollection<ObservableValue> _temperatureValues = new();
-    private readonly ObservableValue _cpuLoadValue = new(0);
-    private readonly ObservableValue _cpuLoadRemaining = new(100);
-    private readonly ObservableValue _gpuLoadValue = new(0);
-    private readonly ObservableValue _gpuLoadRemaining = new(100);
+
+    public bool IsDashboardVisible { get; set; } = true;
 
     public AutomationOptions AutomationSettings { get; private set; } = new AutomationOptions();
     
@@ -46,39 +57,16 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<LogicalCoreViewModel> Cores { get; } = new();
 
     [ObservableProperty]
-    private ISeries[] _temperatureSeries = Array.Empty<ISeries>();
+    private double _cpuLoad;
 
     [ObservableProperty]
-    private ISeries[] _cpuLoadSeries = Array.Empty<ISeries>();
+    private System.Windows.Media.Brush _cpuLoadBrush = LoadGreenBrush;
 
     [ObservableProperty]
-    private ISeries[] _gpuLoadSeries = Array.Empty<ISeries>();
+    private double _gpuLoad;
 
-    public Axis[] EmptyAxes { get; set; } = new Axis[] 
-    { 
-        new Axis 
-        { 
-            IsVisible = false,
-            ShowSeparatorLines = false,
-            LabelsPaint = new SolidColorPaint(new SKColor(136, 136, 136)),
-            TextSize = 12
-        } 
-    };
-
-    public Axis[] TempYAxes { get; set; } = new Axis[] 
-    { 
-        new Axis 
-        { 
-            IsVisible = true, 
-            MinLimit = 30, 
-            MaxLimit = 105,
-            ShowSeparatorLines = true,
-            SeparatorsPaint = new SolidColorPaint(new SKColor(51, 51, 51)),
-            LabelsPaint = new SolidColorPaint(new SKColor(136, 136, 136)),
-            Labeler = value => $"{value} °C",
-            TextSize = 12
-        } 
-    };
+    [ObservableProperty]
+    private System.Windows.Media.Brush _gpuLoadBrush = LoadGreenBrush;
 
     [ObservableProperty]
     private ObservableCollection<PowerPlan> _plans = new();
@@ -103,6 +91,21 @@ public partial class MainViewModel : ObservableObject, IDisposable
             ParkMode.CoolIdle => "pack://application:,,,/Resources/Icons/snowflake.ico",
             _ => "pack://application:,,,/Resources/Icons/main.ico"
         };
+        UpdateTimerInterval();
+    }
+
+    public void UpdateTimerInterval()
+    {
+        if (IsDashboardVisible)
+        {
+            _cpuTimer.Interval = TimeSpan.FromMilliseconds(2000);
+        }
+        else
+        {
+            _cpuTimer.Interval = CurrentMode == ParkMode.AlwaysOn
+                ? TimeSpan.FromSeconds(2)
+                : TimeSpan.FromSeconds(10);
+        }
     }
 
     [ObservableProperty]
@@ -339,11 +342,11 @@ public partial class MainViewModel : ObservableObject, IDisposable
         
         try
         {
-            _cpuTemperatureService = new CpuTemperatureService();
+            HardwareMonitorService = new HardwareMonitorService();
         }
         catch
         {
-            _cpuTemperatureService = null;
+            HardwareMonitorService = new HardwareMonitorService();
             PackageTempText = "Unavailable";
             GpuTempText = "Unavailable";
         }
@@ -353,66 +356,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
             Interval = TimeSpan.FromMilliseconds(2000)
         };
         _cpuTimer.Tick += (_, _) => UpdateCpuTemperatures();
-
-        _temperatureSeries = new ISeries[]
-        {
-            new LineSeries<ObservableValue>
-            {
-                Values = _temperatureValues,
-                Fill = new LinearGradientPaint(new[] { new SKColor(0, 175, 239, 150), new SKColor(247, 178, 103, 150) }, new SKPoint(0, 0), new SKPoint(1, 0)),
-                Stroke = new LinearGradientPaint(new[] { new SKColor(0, 175, 239), new SKColor(247, 178, 103) }, new SKPoint(0, 0), new SKPoint(1, 0)) { StrokeThickness = 3 },
-                GeometryFill = null,
-                GeometryStroke = null,
-                GeometrySize = 0,
-                LineSmoothness = 0.8
-            }
-        };
-
-        CpuLoadSeries = new ISeries[]
-        {
-            new PieSeries<ObservableValue>
-            {
-                Values = new[] { _cpuLoadValue },
-                InnerRadius = 22,
-                HoverPushout = 0,
-                MaxRadialColumnWidth = 3,
-                Fill = new SolidColorPaint(new SKColor(167, 196, 126)), // Greenish
-                DataLabelsPaint = null
-            },
-            new PieSeries<ObservableValue>
-            {
-                Values = new[] { _cpuLoadRemaining },
-                InnerRadius = 22,
-                HoverPushout = 0,
-                MaxRadialColumnWidth = 3,
-                Fill = new SolidColorPaint(new SKColor(0, 0, 0, 0)),
-                DataLabelsPaint = null,
-                Stroke = null
-            }
-        };
-
-        GpuLoadSeries = new ISeries[]
-        {
-            new PieSeries<ObservableValue>
-            {
-                Values = new[] { _gpuLoadValue },
-                InnerRadius = 22,
-                HoverPushout = 0,
-                MaxRadialColumnWidth = 3,
-                Fill = new SolidColorPaint(new SKColor(167, 196, 126)),
-                DataLabelsPaint = null
-            },
-            new PieSeries<ObservableValue>
-            {
-                Values = new[] { _gpuLoadRemaining },
-                InnerRadius = 22,
-                HoverPushout = 0,
-                MaxRadialColumnWidth = 3,
-                Fill = new SolidColorPaint(new SKColor(0, 0, 0, 0)),
-                DataLabelsPaint = null,
-                Stroke = null
-            }
-        };
 
         // Load settings before starting automation
         AutomationSettings = AutomationSettingsManager.Load();
@@ -681,44 +624,34 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private void UpdateCpuTemperatures()
     {
-        if (_cpuTemperatureService == null) return;
         try
         {
-            var snapshot = _cpuTemperatureService.GetSnapshot();
+            var snapshot = HardwareMonitorService.GetTelemetrySnapshot(!IsDashboardVisible);
             PackageTempText = snapshot.PackageCelsius.HasValue ? $"{snapshot.PackageCelsius.Value:F1} \u00B0C" : "N/A";
             GpuTempText = snapshot.GpuCelsius.HasValue ? $"{snapshot.GpuCelsius.Value:F1} \u00B0C" : "N/A";
             TrayToolTipText = $"CoolShift\nCPU: {PackageTempText} | GPU: {GpuTempText}";
 
+            if (!IsDashboardVisible)
+            {
+                return;
+            }
+
             if (snapshot.CpuLoad.HasValue)
             {
-                _cpuLoadValue.Value = snapshot.CpuLoad.Value;
-                _cpuLoadRemaining.Value = Math.Max(0, 100 - snapshot.CpuLoad.Value);
+                CpuLoad = snapshot.CpuLoad.Value;
+                CpuLoadBrush = GetLoadBrush(snapshot.CpuLoad.Value);
                 CpuLoadText = $"{snapshot.CpuLoad.Value:F0}%";
-                if (CpuLoadSeries[0] is PieSeries<ObservableValue> cpuPie)
-                {
-                    cpuPie.Fill = new SolidColorPaint(GetLoadColor(snapshot.CpuLoad.Value));
-                }
             }
 
             if (snapshot.GpuLoad.HasValue)
             {
-                _gpuLoadValue.Value = snapshot.GpuLoad.Value;
-                _gpuLoadRemaining.Value = Math.Max(0, 100 - snapshot.GpuLoad.Value);
+                GpuLoad = snapshot.GpuLoad.Value;
+                GpuLoadBrush = GetLoadBrush(snapshot.GpuLoad.Value);
                 GpuLoadText = $"{snapshot.GpuLoad.Value:F0}%";
-                if (GpuLoadSeries[0] is PieSeries<ObservableValue> gpuPie)
-                {
-                    gpuPie.Fill = new SolidColorPaint(GetLoadColor(snapshot.GpuLoad.Value));
-                }
             }
 
             if (snapshot.PackageCelsius.HasValue)
             {
-                _temperatureValues.Add(new ObservableValue(snapshot.PackageCelsius.Value));
-                if (_temperatureValues.Count > 60)
-                {
-                    _temperatureValues.RemoveAt(0);
-                }
-
                 TaskbarProgressValue = Math.Min(1.0, Math.Max(0.0, snapshot.PackageCelsius.Value / 100.0));
                 if (snapshot.PackageCelsius.Value >= 85.0)
                 {
@@ -769,7 +702,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
             TaskbarProgressState = System.Windows.Shell.TaskbarItemProgressState.None;
         }
 
-        UpdateCores();
+        if (IsDashboardVisible)
+        {
+            UpdateCores();
+        }
     }
 
     private void UpdateCores()
@@ -825,14 +761,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         _cpuTimer.Stop();
         _automationService.Dispose();
-        _cpuTemperatureService?.Dispose();
+        HardwareMonitorService.Dispose();
         _coreParkingService?.Dispose();
-    }
-
-    private SKColor GetLoadColor(double load)
-    {
-        if (load < 40) return new SKColor(167, 196, 126); // Greenish
-        if (load < 75) return new SKColor(240, 220, 100); // Yellowish
-        return new SKColor(240, 100, 100); // Reddish
     }
 }

@@ -692,9 +692,29 @@ public sealed class PowerPlanService
         {
             lock (_logSync)
             {
-                if (!_logInitialized || !File.Exists(_logPath))
+                if (!_logInitialized)
                 {
-                    File.WriteAllText(_logPath, $"==== CoolShift Log Started {DateTime.Now:G} ====\r\n", Encoding.UTF8);
+                    var fileInfo = new FileInfo(_logPath);
+                    if (fileInfo.Exists && fileInfo.Length > 5 * 1024 * 1024)
+                    {
+                        try
+                        {
+                            var backupPath = Path.Combine(fileInfo.DirectoryName ?? "", "CoolShift.prev.log");
+                            File.Copy(_logPath, backupPath, overwrite: true);
+                            File.Delete(_logPath);
+                        }
+                        catch
+                        {
+                            // ignore rotation failures
+                        }
+                    }
+
+                    var hasContent = File.Exists(_logPath) && new FileInfo(_logPath).Length > 0;
+                    var header = hasContent
+                        ? $"\r\n==== CoolShift Log Started {DateTime.Now:G} ====\r\n"
+                        : $"==== CoolShift Log Started {DateTime.Now:G} ====\r\n";
+
+                    File.AppendAllText(_logPath, header, Encoding.UTF8);
                     _logInitialized = true;
                 }
 

@@ -128,6 +128,35 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (!Environment.GetCommandLineArgs().Contains("--hidden"))
         {
             await BringToFrontAsync().ConfigureAwait(false);
+            SetDashboardVisibility(true);
+        }
+        else
+        {
+            SetDashboardVisibility(false);
+        }
+    }
+
+    private void SetDashboardVisibility(bool isVisible)
+    {
+        if (ViewModel is not null)
+        {
+            ViewModel.IsDashboardVisible = isVisible;
+            ViewModel.UpdateTimerInterval();
+        }
+
+        if (!isVisible)
+        {
+            if (_monitoringManager is not null)
+            {
+                _ = _monitoringManager.StopAsync();
+            }
+        }
+        else
+        {
+            if (_monitoringManager is not null && _monitoringInitialized)
+            {
+                _monitoringManager.Start();
+            }
         }
     }
 
@@ -156,6 +185,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             Hide();
             ShowInTaskbar = false;
+            SetDashboardVisibility(false);
 
             if (!_hasShownTrayTip)
             {
@@ -165,6 +195,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         else if (WindowState == WindowState.Normal)
         {
             ShowInTaskbar = true;
+            SetDashboardVisibility(true);
         }
     }
 
@@ -175,6 +206,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             e.Cancel = true;
             Hide();
             ShowInTaskbar = false;
+            SetDashboardVisibility(false);
             return;
         }
     }
@@ -201,6 +233,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         Show();
         ShowInTaskbar = true;
         WindowState = WindowState.Normal;
+        SetDashboardVisibility(true);
         Activate();
     }
 
@@ -296,10 +329,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _monitoringOptions = MonitoringOptions.CreateDefault();
             _monitoringRepository = new MonitoringRepository(_monitoringOptions);
             await LoadSensorSelectionPreferencesAsync().ConfigureAwait(false);
-            _hardwareMonitorService = new HardwareMonitorService();
+            _hardwareMonitorService = ViewModel?.HardwareMonitorService ?? new HardwareMonitorService();
             _monitoringManager = new MonitoringManager(_hardwareMonitorService, _monitoringOptions);
             _monitoringManager.SampleCaptured += OnMonitoringSampleCaptured;
-            _monitoringManager.Start();
+            if (ViewModel?.IsDashboardVisible == true)
+            {
+                _monitoringManager.Start();
+            }
             _monitoringInitialized = true;
         }
         catch (Exception ex)
@@ -552,6 +588,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             await InitializeMonitoringAsync();
         }
 
+        _hardwareMonitorService?.EnableDeepMonitoring(true);
         PopulateSensorsSnapshot();
         ApplyStoredSelections();
 
@@ -563,6 +600,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         window.ShowDialog();
 
         await PersistSensorPreferencesAsync().ConfigureAwait(false);
+        _hardwareMonitorService?.EnableDeepMonitoring(_monitoringSensors.Any(static s => s.IsSelected));
         RefreshMonitoringSensorsView();
     }
 

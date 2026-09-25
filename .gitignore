@@ -485,3 +485,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+\
+
+# Tool caches
+.token-savior-cache.json
+graphify-out/

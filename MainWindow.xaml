@@ -6,7 +6,6 @@
         xmlns:monitoring="clr-namespace:CoolShift.Monitoring"
         xmlns:converters="clr-namespace:CoolShift.Converters"
         xmlns:tb="clr-namespace:H.NotifyIcon;assembly=H.NotifyIcon.Wpf"
-        xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
         mc:Ignorable="d"
         Title="CoolShift"
         Height="740"
@@ -16,6 +15,7 @@
         WindowStartupLocation="CenterScreen"
         Background="#121217">
     <Window.Resources>
+        <converters:PercentageToArcConverter x:Key="PercentageToArcConverter" />
         <converters:CoreNameToNumberConverter x:Key="CoreNameToNumberConverter" />
         <converters:CategoryIconConverter x:Key="CategoryIconConverter" />
         <SolidColorBrush x:Key="WindowGradientTop" Color="#191919" />
@@ -739,7 +739,9 @@
                                         <TextBlock Grid.Column="0" Text="{Binding ViewModel.PackageTempText, FallbackValue='45.0 °C'}" FontFamily="Bahnschrift" FontSize="36" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" Margin="0,0,16,0"/>
                                         <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <Grid Width="50" Height="50">
-                                                <lvc:PieChart Series="{Binding ViewModel.CpuLoadSeries}" Background="Transparent" TooltipPosition="Hidden" />
+                                                <Ellipse Width="42" Height="42" Stroke="#262626" StrokeThickness="3" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                <Path Stroke="{Binding ViewModel.CpuLoadBrush}" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                      Data="{Binding ViewModel.CpuLoad, Converter={StaticResource PercentageToArcConverter}}" />
                                                 <TextBlock Text="{Binding ViewModel.CpuLoadText, FallbackValue='42%'}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource ForegroundBrush}" FontSize="12" FontWeight="Bold" />
                                             </Grid>
                                             <TextBlock Text="LOAD" FontFamily="Bahnschrift" FontSize="9" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
@@ -762,7 +764,9 @@
                                         <TextBlock Grid.Column="0" Text="{Binding ViewModel.GpuTempText, FallbackValue='45.0 °C'}" FontFamily="Bahnschrift" FontSize="36" FontWeight="SemiBold" Foreground="{StaticResource ForegroundBrush}" VerticalAlignment="Center" Margin="0,0,16,0"/>
                                         <StackPanel Grid.Column="1" Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                                             <Grid Width="50" Height="50">
-                                                <lvc:PieChart Series="{Binding ViewModel.GpuLoadSeries}" Background="Transparent" TooltipPosition="Hidden" />
+                                                <Ellipse Width="42" Height="42" Stroke="#262626" StrokeThickness="3" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                <Path Stroke="{Binding ViewModel.GpuLoadBrush}" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                      Data="{Binding ViewModel.GpuLoad, Converter={StaticResource PercentageToArcConverter}}" />
                                                 <TextBlock Text="{Binding ViewModel.GpuLoadText, FallbackValue='42%'}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource ForegroundBrush}" FontSize="12" FontWeight="Bold" />
                                             </Grid>
                                             <TextBlock Text="LOAD" FontFamily="Bahnschrift" FontSize="9" Foreground="{StaticResource MutedBrush}" HorizontalAlignment="Center" Margin="0,2,0,0" />
