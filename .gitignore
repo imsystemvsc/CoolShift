@@ -46,3 +46,6 @@ graphify-out/
 .gemini/
 .agents/
 .claude/
+
+## Local Scripts
+publish.ps1
