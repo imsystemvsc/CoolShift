@@ -2,49 +2,59 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ================================================================= -->
-    <!-- EXACT MAINWINDOW NEUTRAL DARK CHARCOAL COLOR PALETTE              -->
+    <!-- TITANIUM & CRYO-SILICON DESIGN TOKEN SYSTEM                       -->
     <!-- ================================================================= -->
-    <SolidColorBrush x:Key="WindowGradientTop" Color="#191919" />
-    <SolidColorBrush x:Key="WindowGradientBottom" Color="#121217" />
+    <SolidColorBrush x:Key="WindowGradientTop" Color="#14151B" />
+    <SolidColorBrush x:Key="WindowGradientBottom" Color="#0D0E13" />
     
     <LinearGradientBrush x:Key="WindowBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#191919" Offset="0" />
-        <GradientStop Color="#121217" Offset="1" />
+        <GradientStop Color="#14151B" Offset="0" />
+        <GradientStop Color="#0D0E13" Offset="1" />
     </LinearGradientBrush>
 
-    <SolidColorBrush x:Key="DialogBackgroundBrush" Color="#121217" />
-    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#191919" />
-    <SolidColorBrush x:Key="CardHoverBackgroundBrush" Color="#222222" />
-    <SolidColorBrush x:Key="CardBorderBrush" Color="#333333" />
-    <SolidColorBrush x:Key="SecondaryBorderBrush" Color="#262626" />
-    <SolidColorBrush x:Key="SubSectionHeaderBrush" Color="#252830" />
+    <SolidColorBrush x:Key="DialogBackgroundBrush" Color="#0D0E13" />
+    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#151720" />
+    <SolidColorBrush x:Key="CardHoverBackgroundBrush" Color="#1C1F2B" />
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#272B3D" />
+    <SolidColorBrush x:Key="SecondaryBorderBrush" Color="#1E2230" />
+    <SolidColorBrush x:Key="SubSectionHeaderBrush" Color="#1B1E2B" />
+    <SolidColorBrush x:Key="WellBackgroundBrush" Color="#1B1E2B" />
+    <SolidColorBrush x:Key="WellBorderBrush" Color="#272B3D" />
     
-    <SolidColorBrush x:Key="ForegroundBrush" Color="#EEF0F4" />
-    <SolidColorBrush x:Key="MutedBrush" Color="#888888" />
-    <SolidColorBrush x:Key="SubtleMutedBrush" Color="#666666" />
+    <SolidColorBrush x:Key="ForegroundBrush" Color="#EFF1F5" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#858B9E" />
+    <SolidColorBrush x:Key="SubtleMutedBrush" Color="#54596B" />
 
-    <!-- Theme Accent: Sage Green #A7C47E -->
-    <SolidColorBrush x:Key="AccentBrush" Color="#A7C47E" />
-    <SolidColorBrush x:Key="AccentHoverBrush" Color="#B9D68E" />
-    <SolidColorBrush x:Key="AccentPressedBrush" Color="#96B36D" />
-    <SolidColorBrush x:Key="AccentTextBrush" Color="#121217" />
+    <!-- Theme Accent: Cryo Cyan #00B4D8 -->
+    <SolidColorBrush x:Key="AccentBrush" Color="#00B4D8" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#22D3EE" />
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="#0096B4" />
+    <SolidColorBrush x:Key="AccentTextBrush" Color="#0D0E13" />
 
-    <!-- Mode Brushes -->
-    <SolidColorBrush x:Key="AlwaysOnBrush" Color="#FF5C00" />
-    <SolidColorBrush x:Key="AlwaysOnHoverBrush" Color="#FF7020" />
-    <SolidColorBrush x:Key="AlwaysOnPressedBrush" Color="#E05100" />
-    <SolidColorBrush x:Key="AlwaysOnTextBrush" Color="#FFFFFF" />
+    <!-- Mode Accent: Ignition Amber #F59E0B -->
+    <SolidColorBrush x:Key="AlwaysOnBrush" Color="#F59E0B" />
+    <SolidColorBrush x:Key="AlwaysOnHoverBrush" Color="#FBBF24" />
+    <SolidColorBrush x:Key="AlwaysOnPressedBrush" Color="#D97706" />
+    <SolidColorBrush x:Key="AlwaysOnTextBrush" Color="#0D0E13" />
 
-    <!-- Shadows -->
-    <DropShadowEffect x:Key="CardShadow" BlurRadius="10" Opacity="0.2" ShadowDepth="4" Color="#000000" />
+    <!-- Core State Brushes -->
+    <SolidColorBrush x:Key="ActiveCoreBackgroundBrush" Color="#102B33" />
+    <SolidColorBrush x:Key="ActiveCoreBorderBrush" Color="#00B4D8" />
+    <SolidColorBrush x:Key="ActiveCoreTextBrush" Color="#22D3EE" />
+    <SolidColorBrush x:Key="ParkedCoreBackgroundBrush" Color="#161822" />
+    <SolidColorBrush x:Key="ParkedCoreBorderBrush" Color="#222533" />
+    <SolidColorBrush x:Key="ParkedCoreTextBrush" Color="#54596B" />
+
+    <!-- Subtle Depth Elevation -->
+    <DropShadowEffect x:Key="CardShadow" BlurRadius="6" Opacity="0.15" ShadowDepth="2" Color="#000000" />
 
     <!-- Global Dark ToolTip Style -->
     <Style TargetType="ToolTip">
-        <Setter Property="Background" Value="#1F1F24" />
-        <Setter Property="Foreground" Value="#EEF0F4" />
-        <Setter Property="BorderBrush" Value="#383842" />
+        <Setter Property="Background" Value="#151720" />
+        <Setter Property="Foreground" Value="#EFF1F5" />
+        <Setter Property="BorderBrush" Value="#272B3D" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="10,7,10,7" />
+        <Setter Property="Padding" Value="8,5" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="HasDropShadow" Value="True" />
         <Setter Property="Template">
@@ -53,7 +63,7 @@
                     <Border Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
+                            CornerRadius="4"
                             Padding="{TemplateBinding Padding}">
                         <ContentPresenter />
                     </Border>
@@ -94,13 +104,13 @@
                                 <Thumb>
                                     <Thumb.Template>
                                         <ControlTemplate TargetType="Thumb">
-                                            <Border x:Name="thumbBorder" Background="#444444" CornerRadius="4" Margin="1,2" />
+                                            <Border x:Name="thumbBorder" Background="#2E3242" CornerRadius="4" Margin="1,2" />
                                             <ControlTemplate.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="thumbBorder" Property="Background" Value="#A7C47E" />
+                                                    <Setter TargetName="thumbBorder" Property="Background" Value="{StaticResource AccentBrush}" />
                                                 </Trigger>
                                                 <Trigger Property="IsDragging" Value="True">
-                                                    <Setter TargetName="thumbBorder" Property="Background" Value="#B9D68E" />
+                                                    <Setter TargetName="thumbBorder" Property="Background" Value="{StaticResource AccentHoverBrush}" />
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
@@ -147,9 +157,9 @@
                                 Grid.Column="0"
                                 Width="16"
                                 Height="16"
-                                Background="#191919"
-                                BorderBrush="#444444"
-                                BorderThickness="1.5"
+                                Background="{StaticResource SurfaceCardBrush}"
+                                BorderBrush="{StaticResource CardBorderBrush}"
+                                BorderThickness="1"
                                 CornerRadius="4"
                                 VerticalAlignment="Center"
                                 Margin="0,0,8,0">
@@ -176,12 +186,12 @@
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="checkMark" Property="Visibility" Value="Visible" />
                             <Setter TargetName="box" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                            <Setter TargetName="box" Property="Background" Value="#22271E" />
+                            <Setter TargetName="box" Property="Background" Value="{StaticResource ActiveCoreBackgroundBrush}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="{x:Null}">
                             <Setter TargetName="indeterminateMark" Property="Visibility" Value="Visible" />
                             <Setter TargetName="box" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                            <Setter TargetName="box" Property="Background" Value="#22271E" />
+                            <Setter TargetName="box" Property="Background" Value="{StaticResource ActiveCoreBackgroundBrush}" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="box" Property="BorderBrush" Value="{StaticResource AccentHoverBrush}" />
@@ -213,8 +223,12 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
-                            Padding="{TemplateBinding Padding}">
+                            CornerRadius="4"
+                            Padding="{TemplateBinding Padding}"
+                            RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="ButtonScale" ScaleX="1.0" ScaleY="1.0" />
+                        </Border.RenderTransform>
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -224,6 +238,11 @@
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="b" Property="Background" Value="{StaticResource AccentPressedBrush}" />
+                            <Setter TargetName="b" Property="RenderTransform">
+                                <Setter.Value>
+                                    <ScaleTransform ScaleX="0.96" ScaleY="0.96" />
+                                </Setter.Value>
+                            </Setter>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -232,9 +251,9 @@
     </Style>
 
     <Style x:Key="SecondaryButtonStyle" TargetType="Button">
-        <Setter Property="Background" Value="#191919" />
-        <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
-        <Setter Property="BorderBrush" Value="#333333" />
+        <Setter Property="Background" Value="{StaticResource WellBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="14,6" />
         <Setter Property="FontFamily" Value="Bahnschrift" />
@@ -248,15 +267,26 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="6"
-                            Padding="{TemplateBinding Padding}">
+                            CornerRadius="4"
+                            Padding="{TemplateBinding Padding}"
+                            RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform>
+                            <ScaleTransform x:Name="ButtonScale" ScaleX="1.0" ScaleY="1.0" />
+                        </Border.RenderTransform>
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="#252525" />
-                            <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
-                            <Setter TargetName="b" Property="BorderBrush" Value="#444444" />
+                            <Setter TargetName="b" Property="Background" Value="#222638" />
+                            <Setter TargetName="b" Property="BorderBrush" Value="#383E54" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource SurfaceCardBrush}" />
+                            <Setter TargetName="b" Property="RenderTransform">
+                                <Setter.Value>
+                                    <ScaleTransform ScaleX="0.96" ScaleY="0.96" />
+                                </Setter.Value>
+                            </Setter>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -384,19 +414,20 @@
                 <ControlTemplate TargetType="ListBoxItem">
                     <Border x:Name="b"
                             Background="{TemplateBinding Background}"
-                            BorderBrush="#333333"
+                            BorderBrush="{StaticResource CardBorderBrush}"
                             BorderThickness="1"
-                            CornerRadius="6"
+                            CornerRadius="4"
                             Padding="{TemplateBinding Padding}"
-                            Margin="0,3">
+                            Margin="0,2">
                         <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="#222222" />
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource CardHoverBackgroundBrush}" />
+                            <Setter TargetName="b" Property="BorderBrush" Value="#383E54" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="b" Property="Background" Value="#252830" />
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource WellBackgroundBrush}" />
                             <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -409,10 +440,10 @@
     <!-- CONTEXT MENU STYLE                                                -->
     <!-- ================================================================= -->
     <Style TargetType="ContextMenu">
-        <Setter Property="Background" Value="#191919" />
-        <Setter Property="Foreground" Value="#EEF0F4" />
+        <Setter Property="Background" Value="{StaticResource CardBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="#333333" />
+        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}" />
         <Setter Property="Padding" Value="4" />
     </Style>
 
